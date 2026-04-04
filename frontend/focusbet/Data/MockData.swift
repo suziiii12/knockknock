@@ -14,7 +14,7 @@ enum MockData {
         totalHours: 62.5,
         avgFocusScore: 82,
         weeklyConsistency: 0.71,
-        kingBuildings: ["walc"],
+        kingBuildings: ["walc", "knoy", "corec"],
         isDeviceVerified: true
     )
 
@@ -22,8 +22,8 @@ enum MockData {
 
     static let users: [User] = [
         currentUser,
-        User(id: "user-1", name: "NakJun", initials: "NJ", colorIndex: 1, totalScore: 2280, totalSessions: 42, totalHours: 58.0, avgFocusScore: 88, weeklyConsistency: 0.86, kingBuildings: ["lawson"], isDeviceVerified: true),
-        User(id: "user-2", name: "Suji", initials: "SJ", colorIndex: 2, totalScore: 2100, totalSessions: 38, totalHours: 51.0, avgFocusScore: 79, weeklyConsistency: 0.71, kingBuildings: ["hicks"], isDeviceVerified: true),
+        User(id: "user-1", name: "NakJun", initials: "NJ", colorIndex: 1, totalScore: 2280, totalSessions: 42, totalHours: 58.0, avgFocusScore: 88, weeklyConsistency: 0.86, kingBuildings: ["lawson", "hovde"], isDeviceVerified: true),
+        User(id: "user-2", name: "Suji", initials: "SJ", colorIndex: 2, totalScore: 2100, totalSessions: 38, totalHours: 51.0, avgFocusScore: 79, weeklyConsistency: 0.71, kingBuildings: ["hicks", "lilly"], isDeviceVerified: true),
         User(id: "user-3", name: "Eunho", initials: "EH", colorIndex: 3, totalScore: 1950, totalSessions: 35, totalHours: 45.0, avgFocusScore: 85, weeklyConsistency: 0.57, kingBuildings: [], isDeviceVerified: true),
         User(id: "user-4", name: "Alex", initials: "AK", colorIndex: 4, totalScore: 1820, totalSessions: 33, totalHours: 42.0, avgFocusScore: 76, weeklyConsistency: 0.86, kingBuildings: ["pmu"], isDeviceVerified: false),
         User(id: "user-5", name: "Jordan", initials: "JT", colorIndex: 5, totalScore: 1700, totalSessions: 30, totalHours: 38.0, avgFocusScore: 81, weeklyConsistency: 0.43, kingBuildings: [], isDeviceVerified: true),
@@ -33,100 +33,102 @@ enum MockData {
         User(id: "user-9", name: "Taylor", initials: "TS", colorIndex: 9, totalScore: 1150, totalSessions: 20, totalHours: 24.0, avgFocusScore: 68, weeklyConsistency: 0.43, kingBuildings: [], isDeviceVerified: true),
     ]
 
-    // MARK: - Buildings (14 Purdue campus buildings)
+    // MARK: - Buildings (17 Purdue campus buildings)
 
     // MARK: - Building Floor Plans (normalized 0-1 polygons)
 
     static let floorPlans: [String: BuildingFloorPlan] = [
-        // WALC: Large L-shape (main hall + east wing)
         "walc": BuildingFloorPlan(points: [
             (0.05, 0.05), (0.65, 0.05), (0.65, 0.45),
             (0.95, 0.45), (0.95, 0.95), (0.35, 0.95),
             (0.35, 0.55), (0.05, 0.55),
         ]),
-        // Lawson: Rectangle with south indent (entrance recess)
         "lawson": BuildingFloorPlan(points: [
             (0.05, 0.05), (0.95, 0.05), (0.95, 0.60),
             (0.70, 0.60), (0.70, 0.95), (0.30, 0.95),
             (0.30, 0.60), (0.05, 0.60),
         ]),
-        // Hicks: Tall narrow tower (library)
         "hicks": BuildingFloorPlan(points: [
             (0.25, 0.03), (0.75, 0.03), (0.75, 0.97), (0.25, 0.97),
         ]),
-        // Haas: Wide rectangle with angled corner
         "haas": BuildingFloorPlan(points: [
             (0.10, 0.10), (0.90, 0.10), (0.90, 0.65),
             (0.70, 0.90), (0.10, 0.90),
         ]),
-        // Knoy: Wide rectangle (engineering hall)
         "knoy": BuildingFloorPlan(points: [
             (0.03, 0.15), (0.97, 0.15), (0.97, 0.85), (0.03, 0.85),
         ]),
-        // PMU: T-shape (main hall + north wing)
         "pmu": BuildingFloorPlan(points: [
             (0.25, 0.05), (0.75, 0.05), (0.75, 0.35),
             (0.95, 0.35), (0.95, 0.95), (0.05, 0.95),
             (0.05, 0.35), (0.25, 0.35),
         ]),
-        // Krach: Medium square with courtyard notch
         "krach": BuildingFloorPlan(points: [
             (0.08, 0.08), (0.92, 0.08), (0.92, 0.92),
             (0.55, 0.92), (0.55, 0.55), (0.40, 0.55),
             (0.40, 0.92), (0.08, 0.92),
         ]),
-        // Heavilon: Pentagon (irregular)
         "heavilon": BuildingFloorPlan(points: [
             (0.50, 0.05), (0.92, 0.30), (0.80, 0.92),
             (0.20, 0.92), (0.08, 0.30),
         ]),
-        // Lilly: Long narrow horizontal
         "lilly": BuildingFloorPlan(points: [
             (0.02, 0.25), (0.98, 0.25), (0.98, 0.75), (0.02, 0.75),
         ]),
-        // Stanley Coulter: Cross / plus shape
         "stanley": BuildingFloorPlan(points: [
             (0.30, 0.05), (0.70, 0.05), (0.70, 0.30),
             (0.95, 0.30), (0.95, 0.70), (0.70, 0.70),
             (0.70, 0.95), (0.30, 0.95), (0.30, 0.70),
             (0.05, 0.70), (0.05, 0.30), (0.30, 0.30),
         ]),
-        // Rec: Large wide rectangle
         "rec": BuildingFloorPlan(points: [
             (0.03, 0.12), (0.97, 0.12), (0.97, 0.88), (0.03, 0.88),
         ]),
-        // Krannert: U-shape (auditorium with wings)
         "krannert": BuildingFloorPlan(points: [
             (0.05, 0.05), (0.35, 0.05), (0.35, 0.60),
             (0.65, 0.60), (0.65, 0.05), (0.95, 0.05),
             (0.95, 0.95), (0.05, 0.95),
         ]),
-        // CoRec: Large rectangle with bay
         "corec": BuildingFloorPlan(points: [
             (0.03, 0.10), (0.75, 0.10), (0.75, 0.40),
             (0.97, 0.40), (0.97, 0.90), (0.03, 0.90),
         ]),
-        // Hovde: Small square (admin)
         "hovde": BuildingFloorPlan(points: [
             (0.12, 0.12), (0.88, 0.12), (0.88, 0.88), (0.12, 0.88),
         ]),
+        "stewart": BuildingFloorPlan(points: [
+            (0.05, 0.10), (0.95, 0.10), (0.95, 0.90), (0.05, 0.90),
+        ]),
+        "ee": BuildingFloorPlan(points: [
+            (0.08, 0.10), (0.92, 0.10), (0.92, 0.90), (0.08, 0.90),
+        ]),
+        "arms": BuildingFloorPlan(points: [
+            (0.05, 0.05), (0.60, 0.05), (0.60, 0.50),
+            (0.95, 0.50), (0.95, 0.95), (0.05, 0.95),
+        ]),
     ]
 
+    // Coordinates from OpenStreetMap Overpass API (building centroids)
     static let buildings: [Building] = [
-        Building(id: "walc", name: "Wilmeth Active Learning Center", abbreviation: "WALC", position: BuildingPosition(x: 32, y: 32), kingUserId: "user-me", kingName: "Yewon", totalScore: 12450, sessionsCount: 234, colorIndex: 0, floorPlan: floorPlans["walc"]!, latitude: 40.42744, longitude: -86.91370),
-        Building(id: "lawson", name: "Lawson Computer Science Building", abbreviation: "LWSN", position: BuildingPosition(x: 14, y: 32), kingUserId: "user-1", kingName: "NakJun", totalScore: 10890, sessionsCount: 198, colorIndex: 1, floorPlan: floorPlans["lawson"]!, latitude: 40.42780, longitude: -86.91690),
-        Building(id: "hicks", name: "Hicks Undergraduate Library", abbreviation: "HIKS", position: BuildingPosition(x: 56, y: 42), kingUserId: "user-2", kingName: "Suji", totalScore: 9500, sessionsCount: 167, colorIndex: 2, floorPlan: floorPlans["hicks"]!, latitude: 40.42490, longitude: -86.91140),
-        Building(id: "haas", name: "Haas Hall", abbreviation: "HAAS", position: BuildingPosition(x: 56, y: 32), kingUserId: nil, kingName: nil, totalScore: 7200, sessionsCount: 120, colorIndex: 3, floorPlan: floorPlans["haas"]!, latitude: 40.42680, longitude: -86.91050),
-        Building(id: "knoy", name: "Knoy Hall", abbreviation: "KNOY", position: BuildingPosition(x: 32, y: 18), kingUserId: nil, kingName: nil, totalScore: 6800, sessionsCount: 98, colorIndex: 4, floorPlan: floorPlans["knoy"]!, latitude: 40.42900, longitude: -86.91450),
-        Building(id: "pmu", name: "Purdue Memorial Union", abbreviation: "PMU", position: BuildingPosition(x: 38, y: 48), kingUserId: "user-4", kingName: "Alex", totalScore: 8900, sessionsCount: 156, colorIndex: 4, floorPlan: floorPlans["pmu"]!, latitude: 40.42440, longitude: -86.91270),
-        Building(id: "krach", name: "Krach Leadership Center", abbreviation: "KRCH", position: BuildingPosition(x: 70, y: 32), kingUserId: nil, kingName: nil, totalScore: 5400, sessionsCount: 78, colorIndex: 5, floorPlan: floorPlans["krach"]!, latitude: 40.42750, longitude: -86.90700),
-        Building(id: "heavilon", name: "Heavilon Hall", abbreviation: "HEAV", position: BuildingPosition(x: 72, y: 44), kingUserId: nil, kingName: nil, totalScore: 4200, sessionsCount: 65, colorIndex: 6, floorPlan: floorPlans["heavilon"]!, latitude: 40.42500, longitude: -86.90800),
-        Building(id: "lilly", name: "Lilly Hall", abbreviation: "LILY", position: BuildingPosition(x: 16, y: 62), kingUserId: nil, kingName: nil, totalScore: 3800, sessionsCount: 54, colorIndex: 7, floorPlan: floorPlans["lilly"]!, latitude: 40.42300, longitude: -86.91600),
-        Building(id: "stanley", name: "Stanley Coulter Hall", abbreviation: "SC", position: BuildingPosition(x: 40, y: 62), kingUserId: nil, kingName: nil, totalScore: 3500, sessionsCount: 48, colorIndex: 8, floorPlan: floorPlans["stanley"]!, latitude: 40.42380, longitude: -86.91300),
-        Building(id: "rec", name: "Recreation Center", abbreviation: "REC", position: BuildingPosition(x: 56, y: 62), kingUserId: nil, kingName: nil, totalScore: 2900, sessionsCount: 40, colorIndex: 9, floorPlan: floorPlans["rec"]!, latitude: 40.42350, longitude: -86.91100),
-        Building(id: "krannert", name: "Krannert Building", abbreviation: "KRAN", position: BuildingPosition(x: 80, y: 62), kingUserId: nil, kingName: nil, totalScore: 4100, sessionsCount: 60, colorIndex: 6, floorPlan: floorPlans["krannert"]!, latitude: 40.42400, longitude: -86.90600),
-        Building(id: "corec", name: "France A. Cordova Rec Center", abbreviation: "CoRec", position: BuildingPosition(x: 10, y: 80), kingUserId: nil, kingName: nil, totalScore: 2200, sessionsCount: 32, colorIndex: 7, floorPlan: floorPlans["corec"]!, latitude: 40.42170, longitude: -86.91950),
-        Building(id: "hovde", name: "Hovde Hall", abbreviation: "HOVD", position: BuildingPosition(x: 32, y: 46), kingUserId: nil, kingName: nil, totalScore: 3100, sessionsCount: 44, colorIndex: 8, floorPlan: floorPlans["hovde"]!, latitude: 40.42580, longitude: -86.91490),
+        // Claimed buildings
+        Building(id: "walc", name: "Wilmeth Active Learning Center", abbreviation: "WALC", position: BuildingPosition(x: 32, y: 32), kingUserId: "user-me", kingName: "Yewon", totalScore: 12450, sessionsCount: 234, colorIndex: 0, floorPlan: floorPlans["walc"]!, latitude: 40.4273891, longitude: -86.9132292),
+        Building(id: "lawson", name: "Lawson Computer Science Building", abbreviation: "LWSN", position: BuildingPosition(x: 14, y: 32), kingUserId: "user-1", kingName: "NakJun", totalScore: 10890, sessionsCount: 198, colorIndex: 1, floorPlan: floorPlans["lawson"]!, latitude: 40.4277959, longitude: -86.916995),
+        Building(id: "hicks", name: "Hicks Undergraduate Library", abbreviation: "HIKS", position: BuildingPosition(x: 56, y: 42), kingUserId: "user-2", kingName: "Suji", totalScore: 9500, sessionsCount: 167, colorIndex: 2, floorPlan: floorPlans["hicks"]!, latitude: 40.4245347, longitude: -86.9126572),
+        Building(id: "knoy", name: "Knoy Hall", abbreviation: "KNOY", position: BuildingPosition(x: 32, y: 18), kingUserId: "user-me", kingName: "Yewon", totalScore: 6800, sessionsCount: 98, colorIndex: 0, floorPlan: floorPlans["knoy"]!, latitude: 40.4278077, longitude: -86.9110906),
+        Building(id: "pmu", name: "Purdue Memorial Union", abbreviation: "PMU", position: BuildingPosition(x: 38, y: 48), kingUserId: "user-4", kingName: "Mia K.", totalScore: 8900, sessionsCount: 156, colorIndex: 4, floorPlan: floorPlans["pmu"]!, latitude: 40.4250293, longitude: -86.9111556),
+        Building(id: "hovde", name: "Hovde Hall", abbreviation: "HOVD", position: BuildingPosition(x: 32, y: 46), kingUserId: "user-1", kingName: "NakJun", totalScore: 3100, sessionsCount: 44, colorIndex: 1, floorPlan: floorPlans["hovde"]!, latitude: 40.4282374, longitude: -86.914441),
+        Building(id: "corec", name: "France A. Cordova Rec Center", abbreviation: "COREC", position: BuildingPosition(x: 10, y: 80), kingUserId: "user-me", kingName: "Yewon", totalScore: 2200, sessionsCount: 32, colorIndex: 0, floorPlan: floorPlans["corec"]!, latitude: 40.428422, longitude: -86.9224466),
+        Building(id: "lilly", name: "Lilly Hall", abbreviation: "LILY", position: BuildingPosition(x: 16, y: 62), kingUserId: "user-2", kingName: "Suji", totalScore: 3800, sessionsCount: 54, colorIndex: 2, floorPlan: floorPlans["lilly"]!, latitude: 40.4232248, longitude: -86.9182529),
+        // Unclaimed buildings
+        Building(id: "haas", name: "Haas Hall", abbreviation: "HAAS", position: BuildingPosition(x: 56, y: 32), kingUserId: nil, kingName: nil, totalScore: 7200, sessionsCount: 120, colorIndex: 3, floorPlan: floorPlans["haas"]!, latitude: 40.4268235, longitude: -86.9163111),
+        Building(id: "krach", name: "Krach Leadership Center", abbreviation: "KRCH", position: BuildingPosition(x: 70, y: 32), kingUserId: nil, kingName: nil, totalScore: 5400, sessionsCount: 78, colorIndex: 5, floorPlan: floorPlans["krach"]!, latitude: 40.427589, longitude: -86.9212455),
+        Building(id: "heavilon", name: "Heavilon Hall", abbreviation: "HEAV", position: BuildingPosition(x: 72, y: 44), kingUserId: nil, kingName: nil, totalScore: 4200, sessionsCount: 65, colorIndex: 6, floorPlan: floorPlans["heavilon"]!, latitude: 40.4258, longitude: -86.9138),
+        Building(id: "stanley", name: "Stanley Coulter Hall", abbreviation: "SC", position: BuildingPosition(x: 40, y: 62), kingUserId: nil, kingName: nil, totalScore: 3500, sessionsCount: 48, colorIndex: 8, floorPlan: floorPlans["stanley"]!, latitude: 40.4249, longitude: -86.9146),
+        Building(id: "rec", name: "Recitation Building", abbreviation: "REC", position: BuildingPosition(x: 56, y: 62), kingUserId: nil, kingName: nil, totalScore: 2900, sessionsCount: 40, colorIndex: 9, floorPlan: floorPlans["rec"]!, latitude: 40.4270, longitude: -86.9139),
+        Building(id: "krannert", name: "Krannert Building", abbreviation: "KRAN", position: BuildingPosition(x: 80, y: 62), kingUserId: nil, kingName: nil, totalScore: 4100, sessionsCount: 60, colorIndex: 6, floorPlan: floorPlans["krannert"]!, latitude: 40.4236819, longitude: -86.9109362),
+        Building(id: "stewart", name: "Stewart Center", abbreviation: "STEW", position: BuildingPosition(x: 38, y: 55), kingUserId: nil, kingName: nil, totalScore: 2800, sessionsCount: 38, colorIndex: 9, floorPlan: floorPlans["stewart"]!, latitude: 40.4250842, longitude: -86.9127108),
+        Building(id: "ee", name: "Electrical Engineering Building", abbreviation: "EE", position: BuildingPosition(x: 50, y: 18), kingUserId: nil, kingName: nil, totalScore: 2400, sessionsCount: 34, colorIndex: 3, floorPlan: floorPlans["ee"]!, latitude: 40.4293415, longitude: -86.9126703),
+        Building(id: "arms", name: "Neil Armstrong Hall", abbreviation: "ARMS", position: BuildingPosition(x: 60, y: 35), kingUserId: nil, kingName: nil, totalScore: 2600, sessionsCount: 36, colorIndex: 5, floorPlan: floorPlans["arms"]!, latitude: 40.4309179, longitude: -86.9149836),
     ]
 
     // MARK: - WALC Territory Data (Top 10)

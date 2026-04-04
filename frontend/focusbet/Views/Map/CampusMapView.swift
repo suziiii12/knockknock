@@ -5,8 +5,8 @@ struct CampusMapView: View {
     let onNavigate: (Route) -> Void
 
     @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 40.4260, longitude: -86.9130),
-        span: MKCoordinateSpan(latitudeDelta: 0.012, longitudeDelta: 0.012)
+        center: CLLocationCoordinate2D(latitude: 40.4274, longitude: -86.9137),
+        span: MKCoordinateSpan(latitudeDelta: 0.014, longitudeDelta: 0.014)
     ))
 
     private var resetTimeString: String {
@@ -50,22 +50,8 @@ struct CampusMapView: View {
 
             // Apple MapKit Map
             Map(position: $cameraPosition) {
-                // Building annotations — all 14 tappable
-                ForEach(MockData.buildings) { building in
-                    Annotation(
-                        building.abbreviation,
-                        coordinate: building.coordinate,
-                        anchor: .center
-                    ) {
-                        BuildingMarkerView(building: building)
-                            .onTapGesture {
-                                onNavigate(.building(id: building.id))
-                            }
-                    }
-                }
-
                 // "You are here" marker at WALC
-                Annotation("You", coordinate: CLLocationCoordinate2D(latitude: 40.42744, longitude: -86.91370), anchor: .center) {
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
                     VStack(spacing: 2) {
                         ZStack {
                             Circle()
@@ -82,9 +68,21 @@ struct CampusMapView: View {
                     }
                     .allowsHitTesting(false)
                 }
+
+                // All 17 building annotations — tappable
+                ForEach(MockData.buildings) { building in
+                    Annotation("", coordinate: building.coordinate, anchor: .center) {
+                        Button {
+                            onNavigate(.building(id: building.id))
+                        } label: {
+                            BuildingMarkerView(building: building)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-            .colorScheme(.dark)
+            .preferredColorScheme(.dark)
 
             // Legend
             HStack(spacing: 16) {
@@ -128,33 +126,36 @@ struct BuildingMarkerView: View {
     let building: Building
 
     private var markerColor: Color {
-        building.kingUserId != nil ? building.color : AppColors.textMuted
+        if building.kingUserId != nil {
+            return building.color
+        }
+        return AppColors.textSecondary
     }
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 2) {
             if building.kingUserId != nil {
                 Text("\u{1F451}")
-                    .font(.system(size: 8))
+                    .font(.system(size: 10))
             }
             Text(building.abbreviation)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(markerColor)
+                .foregroundStyle(.white)
             if let king = building.kingName {
                 Text(king)
-                    .font(.system(size: 7))
-                    .foregroundStyle(markerColor.opacity(0.7))
+                    .font(.system(size: 8))
+                    .foregroundStyle(.white.opacity(0.8))
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(markerColor.opacity(0.15))
+                .fill(markerColor.opacity(0.85))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(markerColor.opacity(0.4), lineWidth: 1)
+                .stroke(markerColor, lineWidth: 1.5)
         )
         .contentShape(Rectangle())
     }

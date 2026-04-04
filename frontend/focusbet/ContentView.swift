@@ -11,7 +11,31 @@ enum Route: Hashable {
     case profile
 }
 
+// MARK: - Root view with auth gate
+
 struct ContentView: View {
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @AppStorage("isProfileComplete") private var isProfileComplete = false
+    @State private var showWorldID = false
+
+    var body: some View {
+        Group {
+            if !isLoggedIn && !showWorldID {
+                WelcomeView(onSignIn: { showWorldID = true })
+            } else if !isLoggedIn && showWorldID {
+                WorldIDView()
+            } else if !isProfileComplete {
+                ProfileSetupView()
+            } else {
+                MainAppView()
+            }
+        }
+    }
+}
+
+// MARK: - Main app (existing navigation)
+
+struct MainAppView: View {
     @State private var navigationPath = NavigationPath()
     @State private var activeTab: String = "focus"
 

@@ -2,36 +2,82 @@ import SwiftUI
 
 struct ProfileView: View {
     private let user = MockData.currentUser
+    @State private var showEditSheet = false
+    @State private var refreshID = UUID()
+
+    private var savedName: String { UserDefaults.standard.string(forKey: "userName") ?? user.name }
+    private var savedSchool: String { UserDefaults.standard.string(forKey: "userSchool") ?? "" }
+    private var savedMajor: String { UserDefaults.standard.string(forKey: "userMajor") ?? "" }
+    private var savedYear: String { UserDefaults.standard.string(forKey: "userYear") ?? "" }
+    private var savedGraduation: String { UserDefaults.standard.string(forKey: "userGraduation") ?? "" }
+    private var savedGender: String { UserDefaults.standard.string(forKey: "userGender") ?? "" }
+
+    private var userInitials: String {
+        let parts = savedName.split(separator: " ").prefix(2)
+        return parts.map { String($0.prefix(1)) }.joined().uppercased()
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 28) {
-                // Avatar + Name
-                VStack(spacing: 12) {
-                    UserAvatar(initials: user.initials, colorIndex: user.colorIndex, size: 72, showCrown: !user.kingBuildings.isEmpty)
+                // 1. User info card
+                VStack(spacing: 16) {
+                    UserAvatar(initials: userInitials.isEmpty ? user.initials : userInitials, colorIndex: user.colorIndex, size: 72, showCrown: !user.kingBuildings.isEmpty)
 
-                    Text(user.name)
+                    Text(savedName)
                         .font(AppFonts.title)
                         .foregroundStyle(AppColors.textPrimary)
 
-                    if user.isDeviceVerified {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.shield.fill")
-                                .font(.system(size: 12))
-                                .foregroundStyle(AppColors.accent)
-                            Text("Device Verified")
-                                .font(AppFonts.caption)
-                                .foregroundStyle(AppColors.accent)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(AppColors.accent.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.shield.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppColors.accent)
+                        Text("World ID Verified")
+                            .font(AppFonts.caption)
+                            .foregroundStyle(AppColors.accent)
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(AppColors.accent.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    // Profile details
+                    VStack(spacing: 8) {
+                        if !savedSchool.isEmpty { profileInfoRow("School", savedSchool) }
+                        if !savedMajor.isEmpty { profileInfoRow("Major", savedMajor) }
+                        if !savedYear.isEmpty { profileInfoRow("Year", savedYear) }
+                        if !savedGraduation.isEmpty { profileInfoRow("Graduation", savedGraduation) }
+                    }
+                    .padding(.horizontal, 60)
                 }
                 .padding(.top, 24)
+                .id(refreshID)
 
-                // Stats grid
+                // 2. Edit Profile button
+                Button {
+                    showEditSheet = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 13))
+                        Text("Edit Profile")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundStyle(AppColors.accent)
+                    .frame(width: 160, height: 36)
+                    .background(AppColors.accent.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(AppColors.accent.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showEditSheet, onDismiss: { refreshID = UUID() }) {
+                    EditProfileView()
+                }
+
+                // 3. Stats grid
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: 12),
                     GridItem(.flexible(), spacing: 12),
@@ -45,7 +91,7 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal, 40)
 
-                // Territory - Week 14
+                // 4. Territory
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Your Territory")
@@ -89,7 +135,7 @@ struct ProfileView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)
 
-                // Past weeks
+                // 5. Past weeks
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Past Weeks")
                         .font(AppFonts.heading)
@@ -120,7 +166,7 @@ struct ProfileView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)
 
-                // Streak
+                // 6. Streak
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 6) {
                         Text("\u{1F525}")
@@ -152,11 +198,48 @@ struct ProfileView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)
+
+                // 7. Log Out
+                Button {
+                    UserDefaults.standard.set(false, forKey: "isLoggedIn")
+                    UserDefaults.standard.set(false, forKey: "isProfileComplete")
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 14))
+                        Text("Log Out")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundStyle(AppColors.danger)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(AppColors.danger.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard)
+                            .stroke(AppColors.danger.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 40)
                 .padding(.bottom, 32)
             }
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+    }
+
+    private func profileInfoRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(AppFonts.caption)
+                .foregroundStyle(AppColors.textMuted)
+                .frame(width: 80, alignment: .trailing)
+            Text(value)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(AppColors.textSecondary)
+            Spacer()
+        }
     }
 }
 

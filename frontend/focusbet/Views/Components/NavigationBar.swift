@@ -11,6 +11,13 @@ struct NavigationBar: View {
         ("Profile", "profile", .profile),
     ]
 
+    private var navInitials: String {
+        let name = UserDefaults.standard.string(forKey: "userName") ?? ""
+        let parts = name.split(separator: " ").prefix(2)
+        let initials = parts.map { String($0.prefix(1)) }.joined().uppercased()
+        return initials.isEmpty ? MockData.currentUser.initials : initials
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             // Logo
@@ -50,7 +57,7 @@ struct NavigationBar: View {
             // Score badge + Avatar
             HStack(spacing: 12) {
                 ScoreBadge(score: MockData.currentUser.totalScore)
-                UserAvatar(initials: MockData.currentUser.initials, colorIndex: MockData.currentUser.colorIndex, size: 32)
+                UserAvatar(initials: navInitials, colorIndex: MockData.currentUser.colorIndex, size: 32)
             }
             .padding(.trailing, 24)
         }
