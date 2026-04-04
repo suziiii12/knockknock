@@ -1,16 +1,7 @@
 import SwiftUI
 
 struct HistoryView: View {
-    private let sessions = MockData.sessionHistory
-
-    private var totalSessions: Int { sessions.count }
-    private var avgScore: Int {
-        guard !sessions.isEmpty else { return 0 }
-        return sessions.map(\.focusScore).reduce(0, +) / sessions.count
-    }
-    private var totalHours: Double {
-        Double(sessions.map(\.duration).reduce(0, +)) / 60.0
-    }
+    @State private var vm = HistoryViewModel()
 
     var body: some View {
         ScrollView {
@@ -23,26 +14,74 @@ struct HistoryView: View {
                     .padding(.horizontal, 32)
                     .padding(.top, 16)
 
-                // Quick stats
-                HStack(spacing: 24) {
-                    QuickStat(label: "Total Sessions", value: "\(totalSessions)")
-                    QuickStat(label: "Avg Score", value: "\(avgScore)")
-                    QuickStat(label: "Total Hours", value: totalHours.oneDecimal)
-                }
-                .padding(.horizontal, 32)
-
-                // Session list
-                VStack(spacing: 12) {
-                    ForEach(sessions) { session in
-                        SessionCard(session: session)
+                if vm.isLoading {
+                    ProgressView()
+                        .tint(AppColors.accent)
+                        .padding(.top, 60)
+                } else if let error = vm.errorMessage {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 32))
+                            .foregroundStyle(AppColors.warning)
+                        Text(error)
+                            .font(AppFonts.body)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .multilineTextAlignment(.center)
+                        Button {
+                            Task { await vm.loadHistory() }
+                        } label: {
+                            Text("Retry")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .background(AppColors.accent)
+                                .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusButton))
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.top, 40)
+                    .padding(.horizontal, 32)
+                } else if vm.sessions.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.badge.xmark")
+                            .font(.system(size: 40))
+                            .foregroundStyle(AppColors.textMuted)
+                        Text("No sessions yet")
+                            .font(AppFonts.heading)
+                            .foregroundStyle(AppColors.textSecondary)
+                        Text("Complete a focus session to see your history here.")
+                            .font(AppFonts.caption)
+                            .foregroundStyle(AppColors.textMuted)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 60)
+                    .padding(.horizontal, 32)
+                } else {
+                    // Quick stats
+                    HStack(spacing: 24) {
+                        QuickStat(label: "Total Sessions", value: "\(vm.totalSessions)")
+                        QuickStat(label: "Avg Score", value: "\(vm.avgScore)")
+                        QuickStat(label: "Total Hours", value: vm.totalHours.oneDecimal)
+                    }
+                    .padding(.horizontal, 32)
+
+                    // Session list
+                    VStack(spacing: 12) {
+                        ForEach(vm.sessions) { session in
+                            SessionCard(session: session)
+                        }
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 24)
             }
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+        .task {
+            await vm.loadHistory()
+        }
     }
 }
 
@@ -77,6 +116,12 @@ private struct SessionCard: View {
         if session.focusScore >= 80 { return AppColors.accentLight }
         if session.focusScore >= 60 { return AppColors.warning }
         return AppColors.danger
+    }
+
+    private var winBadge: (text: String, color: Color)? {
+        if session.focusScore >= 70 { return ("WIN", AppColors.accent) }
+        if session.focusScore < 50  { return ("LOSS", AppColors.danger) }
+        return nil
     }
 
     var body: some View {
@@ -115,12 +160,25 @@ private struct SessionCard: View {
 
             Spacer()
 
-            // Building score
+            // Win/loss badge
+            if let badge = winBadge {
+                Text(badge.text)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(badge.color)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+
+            // Building score + duration
             VStack(alignment: .trailing, spacing: 2) {
                 Text("+\(session.buildingScore)pts")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppColors.accent)
-                Text("\(session.duration / 60)h")
+                Text(session.duration >= 60
+                     ? "\(session.duration / 60)h \(session.duration % 60 > 0 ? "\(session.duration % 60)m" : "")"
+                     : "\(session.duration)m")
                     .font(AppFonts.caption)
                     .foregroundStyle(AppColors.textMuted)
             }

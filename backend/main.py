@@ -23,7 +23,7 @@ import models
 import schemas
 from auth import verify_world_id_proof, create_access_token
 from responses import success
-from routers import challenges, sessions, checkin, buildings
+from routers import challenges, sessions, checkin, buildings, users
 from routers.sessions import scheduler as checkin_scheduler
 
 
@@ -96,6 +96,7 @@ app.include_router(challenges.router)
 app.include_router(sessions.router)
 app.include_router(checkin.router)
 app.include_router(buildings.router)
+app.include_router(users.router)
 
 
 @app.get("/health")
