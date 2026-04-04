@@ -44,3 +44,4 @@ venv/
 .claude/
 CLAUDE.md
 *.xcuserstate
+backend/focusbet.db
