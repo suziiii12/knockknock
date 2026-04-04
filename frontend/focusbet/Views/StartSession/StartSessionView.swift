@@ -3,8 +3,12 @@ import SwiftUI
 struct StartSessionView: View {
     let onNavigate: (Route) -> Void
     @State private var selectedDuration: Int = 120
+    @State private var locationService = LocationService()
     private let durations = [60, 120, 240]
-    private let detectedBuilding = MockData.buildings[0] // WALC
+
+    private var building: Building {
+        locationService.detectedBuilding ?? MockData.buildings.first { $0.id == "walc" }!
+    }
 
     var body: some View {
         VStack(spacing: 32) {
@@ -12,30 +16,49 @@ struct StartSessionView: View {
 
             // GPS detection banner
             HStack(spacing: 12) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 8, height: 8)
-                    Text("GPS Detected")
-                        .font(AppFonts.caption)
-                        .foregroundStyle(Color.green)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.green.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                Text(detectedBuilding.name)
-                    .font(AppFonts.heading)
-                    .foregroundStyle(AppColors.textPrimary)
-
-                if let king = detectedBuilding.kingName {
-                    HStack(spacing: 4) {
-                        Text("\u{1F451}")
-                            .font(.system(size: 12))
-                        Text("King: \(king)")
+                if locationService.isLocating {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(AppColors.warning)
+                        Text("Locating...")
                             .font(AppFonts.caption)
                             .foregroundStyle(AppColors.warning)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(AppColors.warning.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    Text("Defaulting to WALC")
+                        .font(AppFonts.heading)
+                        .foregroundStyle(AppColors.textSecondary)
+                } else {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                        Text(locationService.isAuthorized ? "GPS Detected" : "GPS Off")
+                            .font(AppFonts.caption)
+                            .foregroundStyle(Color.green)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.green.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    Text(building.name)
+                        .font(AppFonts.heading)
+                        .foregroundStyle(AppColors.textPrimary)
+
+                    if let king = building.kingName {
+                        HStack(spacing: 4) {
+                            Text("\u{1F451}")
+                                .font(.system(size: 12))
+                            Text("King: \(king)")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.warning)
+                        }
                     }
                 }
             }
@@ -80,7 +103,7 @@ struct StartSessionView: View {
 
             // Session summary
             VStack(spacing: 12) {
-                SummaryRow(label: "Building", value: detectedBuilding.abbreviation)
+                SummaryRow(label: "Building", value: building.abbreviation)
                 SummaryRow(label: "Duration", value: "\(selectedDuration / 60) hour\(selectedDuration >= 120 ? "s" : "")")
                 SummaryRow(label: "Max Time Score", value: "\(min(selectedDuration * 100 / 240, 100))pts")
             }
@@ -95,7 +118,7 @@ struct StartSessionView: View {
 
             // Start button
             Button {
-                onNavigate(.session(duration: selectedDuration, buildingId: detectedBuilding.id))
+                onNavigate(.session(duration: selectedDuration, buildingId: building.id))
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "play.fill")
@@ -114,6 +137,12 @@ struct StartSessionView: View {
         .frame(maxWidth: .infinity)
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+        .onAppear {
+            locationService.startUpdating()
+        }
+        .onDisappear {
+            locationService.stopUpdating()
+        }
     }
 }
 
