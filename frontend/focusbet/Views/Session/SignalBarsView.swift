@@ -51,7 +51,7 @@ struct SignalBarsView: View {
     }
 
     private func colorForScore(_ score: Int) -> Color {
-        if score >= 80 { return AppColors.accent }
+        if score >= 80 { return AppColors.accentLight }
         if score >= 60 { return AppColors.warning }
         return AppColors.danger
     }

@@ -9,6 +9,7 @@ enum Route: Hashable {
     case building(id: String)
     case history
     case profile
+    case howItWorks
 }
 
 // MARK: - Root view with auth gate
@@ -97,12 +98,16 @@ struct MainAppView: View {
             HistoryView()
         case .profile:
             ProfileView()
+        case .howItWorks:
+            HowItWorksView(onNavigate: { r in
+                navigationPath.append(r)
+            })
         }
     }
 
     private func tabForRoute(_ route: Route) -> String {
         switch route {
-        case .home, .start, .session, .result: return "focus"
+        case .home, .start, .session, .result, .howItWorks: return "focus"
         case .history: return "history"
         case .map, .building: return "map"
         case .profile: return "profile"

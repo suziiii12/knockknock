@@ -15,113 +15,247 @@ struct HomeView: View {
         (3, "Suji", "SJ", 2, 3890, 2, false),
         (4, "Eunho", "EH", 3, 3450, 0, false),
         (5, "Mia K.", "MK", 4, 2980, 1, false),
-        (6, "Alex T.", "AT", 5, 2650, 0, false),
-        (7, "Chris P.", "CP", 6, 2340, 0, false),
-        (8, "Jordan", "JD", 7, 2100, 0, false),
-        (9, "Emma W.", "EW", 8, 1870, 0, false),
-        (10, "Jake R.", "JR", 9, 1650, 0, false),
     ]
 
     private var maxScore: Int { leaderboard.first?.score ?? 1 }
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Top section: Map (2/3) + Leaderboard (1/3)
-            HStack(spacing: 16) {
-                // Left: Campus Map
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Campus Territory")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppColors.textPrimary)
+        ScrollView {
+            VStack(spacing: 0) {
+                // SECTION 1 — Hero Banner
+                heroSection
+                    .padding(.horizontal, 32)
+                    .padding(.top, 40)
+                    .padding(.bottom, 32)
 
-                    Map(position: $cameraPosition) {
-                        // "You are here" dot
-                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.green.opacity(0.3))
-                                    .frame(width: 20, height: 20)
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 10, height: 10)
-                                    .overlay(Circle().stroke(.white, lineWidth: 1.5))
-                            }
-                            .allowsHitTesting(false)
+                // SECTION 2 — Map + Leaderboard
+                mapSection
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 24)
+
+                // SECTION 3 — CTA
+                ctaButton
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 32)
+            }
+        }
+        .background(AppColors.bgPrimary)
+        .toolbar(.hidden, for: .automatic)
+    }
+
+    // MARK: - Section 1: Hero
+
+    private var heroSection: some View {
+        HStack(alignment: .top, spacing: 40) {
+            // Left: text + buttons
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Start. Focus.\nConquer.")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineSpacing(4)
+
+                Text("Track your study sessions with AI.\nCompete for campus territory.\nProve you're the most focused student.")
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineSpacing(4)
+
+                HStack(spacing: 12) {
+                    Button {
+                        onNavigate(.start)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 13))
+                            Text("Start Studying")
+                                .font(.system(size: 15, weight: .semibold))
                         }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 13)
+                        .background(AppColors.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+                    }
+                    .buttonStyle(.plain)
 
-                        // Building markers
-                        ForEach(MockData.buildings) { building in
-                            Annotation("", coordinate: building.coordinate, anchor: .center) {
-                                Button {
-                                    onNavigate(.building(id: building.id))
-                                } label: {
-                                    HomeMapMarker(building: building)
-                                }
-                                .buttonStyle(.plain)
+                    Button {
+                        onNavigate(.howItWorks)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "questionmark.circle")
+                                .font(.system(size: 13))
+                            Text("How it Works")
+                                .font(.system(size: 15, weight: .medium))
+                        }
+                        .foregroundStyle(AppColors.accent)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 13)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard)
+                                .stroke(AppColors.accent, lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Right: 3 step cards
+            VStack(spacing: 12) {
+                stepCard("\u{1F4CD}", "Check in at a building", "GPS auto-detects your location", rotation: -3)
+                stepCard("\u{1F9E0}", "AI tracks your focus", "Webcam + screen analysis in real-time", rotation: 2)
+                stepCard("\u{1F451}", "Claim territory", "Top scorer becomes Building King", rotation: -1)
+            }
+            .frame(width: 260)
+        }
+    }
+
+    private func stepCard(_ emoji: String, _ title: String, _ subtitle: String, rotation: Double) -> some View {
+        HStack(spacing: 12) {
+            Text(emoji)
+                .font(.system(size: 24))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppColors.textPrimary)
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColors.textMuted)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColors.bgSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: AppColors.cardShadow, radius: 6, y: 2)
+        .rotationEffect(.degrees(rotation))
+    }
+
+    // MARK: - Section 2: Map + Leaderboard
+
+    private var mapSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header
+            HStack(spacing: 8) {
+                Text("Live Campus Territory")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppColors.textPrimary)
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                    Text("Live")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.green)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.green.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+
+            HStack(spacing: 16) {
+                // Left: Map
+                Map(position: $cameraPosition) {
+                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green.opacity(0.3))
+                                .frame(width: 20, height: 20)
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 10, height: 10)
+                                .overlay(Circle().stroke(.white, lineWidth: 1.5))
+                        }
+                        .allowsHitTesting(false)
+                    }
+
+                    ForEach(MockData.buildings) { building in
+                        Annotation("", coordinate: building.coordinate, anchor: .center) {
+                            Button {
+                                onNavigate(.building(id: building.id))
+                            } label: {
+                                HomeMapMarker(building: building)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-                    .preferredColorScheme(.dark)
-                    .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
-                    .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
                 }
+                .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+                .preferredColorScheme(.dark)
+                .frame(height: 300)
+                .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+                .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
                 .frame(maxWidth: .infinity)
 
-                // Right: Global Leaderboard
-                VStack(alignment: .leading, spacing: 12) {
+                // Right: Leaderboard (top 5)
+                VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 6) {
                         Text("\u{1F3C6}")
-                            .font(.system(size: 16))
+                            .font(.system(size: 14))
                         Text("Top Focused Students")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppColors.textPrimary)
                     }
 
-                    ScrollView {
-                        VStack(spacing: 4) {
-                            ForEach(leaderboard, id: \.rank) { entry in
-                                leaderboardRow(entry)
-                            }
+                    VStack(spacing: 2) {
+                        ForEach(leaderboard, id: \.rank) { entry in
+                            leaderboardRow(entry)
                         }
                     }
+
+                    Button {
+                        onNavigate(.map)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("View All")
+                                .font(.system(size: 12, weight: .medium))
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundStyle(AppColors.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .padding(16)
+                .padding(14)
                 .background(AppColors.bgSecondary)
                 .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
                 .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
                 .frame(width: 300)
+                .frame(height: 300)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            // Bottom: CTA button
-            Button {
-                onNavigate(.start)
-            } label: {
-                VStack(spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text("\u{1F3F4}")
-                        Text("Start Conquering Territory")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                    Text("Begin a study session to claim buildings")
-                        .font(.system(size: 12))
-                        .opacity(0.8)
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 64)
-                .background(AppColors.accent)
-                .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
-                .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 12)
         }
-        .background(AppColors.bgPrimary)
-        .toolbar(.hidden, for: .automatic)
+    }
+
+    // MARK: - Section 3: CTA
+
+    private var ctaButton: some View {
+        Button {
+            onNavigate(.start)
+        } label: {
+            VStack(spacing: 4) {
+                Text("Start Conquering Territory")
+                    .font(.system(size: 18, weight: .semibold))
+                Text("Begin a study session to claim buildings")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(
+                    colors: [AppColors.accent.opacity(0.75), AppColors.accent.opacity(0.9)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+            .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Leaderboard row
@@ -130,78 +264,60 @@ struct HomeView: View {
         let isFirst = entry.rank == 1
 
         return HStack(spacing: 8) {
-            // Rank
             if isFirst {
                 Text("\u{1F451}")
-                    .font(.system(size: 12))
-                    .frame(width: 22)
+                    .font(.system(size: 11))
+                    .frame(width: 20)
             } else {
                 Text("#\(entry.rank)")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(AppColors.textMuted)
-                    .frame(width: 22)
+                    .frame(width: 20)
             }
 
-            // Avatar
-            UserAvatar(initials: entry.initials, colorIndex: entry.colorIndex, size: 24)
+            UserAvatar(initials: entry.initials, colorIndex: entry.colorIndex, size: 22)
 
-            // Name + YOU badge
-            HStack(spacing: 4) {
+            HStack(spacing: 3) {
                 Text(entry.name)
-                    .font(.system(size: 12, weight: isFirst ? .bold : .medium))
+                    .font(.system(size: 11, weight: isFirst ? .bold : .medium))
                     .foregroundStyle(isFirst ? AppColors.accent : AppColors.textPrimary)
                     .lineLimit(1)
 
                 if entry.isYou {
                     Text("YOU")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 7, weight: .bold))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
                         .background(AppColors.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
             }
 
             Spacer()
 
-            // King count
             if entry.kingCount > 0 {
-                HStack(spacing: 2) {
+                HStack(spacing: 1) {
                     Text("\u{1F451}")
-                        .font(.system(size: 8))
+                        .font(.system(size: 7))
                     Text("\(entry.kingCount)")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(AppColors.warning)
                 }
             }
 
-            // Score + bar
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("\(entry.score.formattedWithCommas)")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(AppColors.textSecondary)
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(AppColors.bgTertiary)
-                            .frame(height: 3)
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(AppColors.userColors[entry.colorIndex % AppColors.userColors.count])
-                            .frame(width: geo.size.width * CGFloat(entry.score) / CGFloat(maxScore), height: 3)
-                    }
-                }
-                .frame(width: 50, height: 3)
-            }
+            Text("\(entry.score.formattedWithCommas)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(AppColors.textSecondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
         .background(isFirst ? AppColors.accent.opacity(0.08) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 }
 
-// MARK: - Compact map marker for home
+// MARK: - Compact map marker
 
 private struct HomeMapMarker: View {
     let building: Building

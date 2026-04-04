@@ -1,194 +1,26 @@
 import SwiftUI
 import Charts
 
-// MARK: - Mock data for admin dashboard
-
-private enum AdminData {
-    struct BuildingUsage: Identifiable {
-        let id = UUID()
-        let name: String
-        let sessions: Int
-    }
-
-    struct HourlyUsage: Identifiable {
-        let id = UUID()
-        let building: String
-        let hour: Int
-        let count: Int
-    }
-
-    struct DailyTrend: Identifiable {
-        let id = UUID()
-        let day: String
-        let sessions: Int
-    }
-
-    struct MajorScore: Identifiable {
-        let id = UUID()
-        let major: String
-        let avgScore: Int
-    }
-
-    struct YearHours: Identifiable {
-        let id = UUID()
-        let year: String
-        let hours: Double
-    }
-
-    struct MajorBuilding: Identifiable {
-        let id = UUID()
-        let major: String
-        let building: String
-        let avgScore: Int
-        let totalHours: Int
-    }
-
-    struct GenderStat: Identifiable {
-        let id = UUID()
-        let label: String
-        let percent: Double
-    }
-
-    static let buildingUsage: [BuildingUsage] = [
-        .init(name: "WALC", sessions: 892),
-        .init(name: "HIKS", sessions: 654),
-        .init(name: "LWSN", sessions: 543),
-        .init(name: "PMU", sessions: 421),
-        .init(name: "KNOY", sessions: 387),
-        .init(name: "COREC", sessions: 312),
-        .init(name: "HOVD", sessions: 278),
-        .init(name: "STEW", sessions: 245),
-        .init(name: "KRAN", sessions: 198),
-        .init(name: "HAAS", sessions: 176),
-    ]
-
-    static let peakHours: [HourlyUsage] = {
-        let buildings = ["WALC", "HIKS", "LWSN", "PMU", "KNOY", "COREC", "HOVD", "STEW"]
-        let patterns: [String: [Int]] = [
-            "WALC":  [2, 5, 12, 28, 45, 62, 58, 42, 35, 22, 15, 8, 5, 3, 2, 1, 0, 0],
-            "HIKS":  [1, 3, 8, 15, 22, 30, 35, 45, 52, 48, 38, 25, 18, 10, 5, 2, 1, 0],
-            "LWSN":  [2, 4, 10, 22, 35, 48, 42, 38, 30, 18, 12, 8, 5, 3, 2, 1, 0, 0],
-            "PMU":   [3, 5, 8, 12, 18, 25, 22, 20, 15, 12, 8, 5, 3, 2, 1, 1, 0, 0],
-            "KNOY":  [1, 3, 8, 18, 32, 42, 38, 28, 22, 15, 10, 6, 4, 2, 1, 0, 0, 0],
-            "COREC": [5, 8, 12, 15, 10, 8, 12, 18, 25, 30, 22, 15, 10, 8, 5, 3, 2, 1],
-            "HOVD":  [1, 2, 5, 10, 15, 20, 18, 15, 12, 8, 5, 3, 2, 1, 0, 0, 0, 0],
-            "STEW":  [2, 3, 5, 8, 12, 18, 22, 20, 15, 10, 8, 5, 3, 2, 1, 0, 0, 0],
-        ]
-        var result: [HourlyUsage] = []
-        for b in buildings {
-            let counts = patterns[b] ?? []
-            for (i, c) in counts.enumerated() {
-                result.append(.init(building: b, hour: 6 + i, count: c))
-            }
-        }
-        return result
-    }()
-
-    static let dailyTrend: [DailyTrend] = [
-        .init(day: "Mon", sessions: 298),
-        .init(day: "Tue", sessions: 342),
-        .init(day: "Wed", sessions: 315),
-        .init(day: "Thu", sessions: 378),
-        .init(day: "Fri", sessions: 256),
-        .init(day: "Sat", sessions: 189),
-        .init(day: "Sun", sessions: 224),
-    ]
-
-    static let majorScores: [MajorScore] = [
-        .init(major: "Computer Science", avgScore: 82),
-        .init(major: "Science", avgScore: 80),
-        .init(major: "Engineering", avgScore: 78),
-        .init(major: "Liberal Arts", avgScore: 74),
-        .init(major: "Business", avgScore: 71),
-    ]
-
-    static let yearHours: [YearHours] = [
-        .init(year: "Freshman", hours: 8.2),
-        .init(year: "Sophomore", hours: 10.1),
-        .init(year: "Junior", hours: 12.4),
-        .init(year: "Senior", hours: 9.8),
-        .init(year: "Graduate", hours: 15.7),
-    ]
-
-    static let majorBuildings: [MajorBuilding] = [
-        .init(major: "Computer Science", building: "LWSN", avgScore: 82, totalHours: 543),
-        .init(major: "Engineering", building: "KNOY", avgScore: 78, totalHours: 412),
-        .init(major: "Science", building: "HIKS", avgScore: 80, totalHours: 398),
-        .init(major: "Business", building: "KRAN", avgScore: 71, totalHours: 287),
-        .init(major: "Liberal Arts", building: "STEW", avgScore: 74, totalHours: 215),
-    ]
-
-    static let genderStats: [GenderStat] = [
-        .init(label: "Female", percent: 44),
-        .init(label: "Male", percent: 51),
-        .init(label: "Other", percent: 5),
-    ]
-}
-
 // MARK: - Admin Dashboard
 
 struct AdminDashboardView: View {
     @AppStorage("isAdmin") private var isAdmin = false
     @State private var selectedTab = 0
+    @State private var dateRange = "This Week"
+
+    private let dateRanges = ["This Week", "This Month", "All Time"]
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top bar
-            HStack {
-                HStack(spacing: 10) {
-                    Image(systemName: "building.columns.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(AppColors.accent)
-                    Text("FocusBet Admin")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(AppColors.textPrimary)
-                }
-
-                Spacer()
-
-                Text("Purdue University")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColors.textSecondary)
-
-                Spacer()
-
-                Button {
-                    isAdmin = false
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 12))
-                        Text("Log Out")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundStyle(AppColors.danger)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(AppColors.danger.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
-            .background(AppColors.bgSecondary)
-            .overlay(alignment: .bottom) { AppColors.border.frame(height: 1) }
-
-            // Tab selector
-            HStack(spacing: 0) {
-                tabButton("Facilities", icon: "building.2.fill", index: 0)
-                tabButton("Students", icon: "person.3.fill", index: 1)
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 12)
-
-            // Content
+            topBar
             ScrollView {
-                if selectedTab == 0 {
-                    facilitiesTab
-                } else {
-                    studentsTab
+                VStack(spacing: 20) {
+                    overviewCards
+                    tabSelector
+                    tabContent
+                    ferpaNotice
                 }
+                .padding(24)
             }
             .background(AppColors.bgPrimary)
         }
@@ -196,394 +28,545 @@ struct AdminDashboardView: View {
         .toolbar(.hidden, for: .automatic)
     }
 
-    private func tabButton(_ label: String, icon: String, index: Int) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) { selectedTab = index }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 13))
-                Text(label)
-                    .font(.system(size: 14, weight: selectedTab == index ? .semibold : .regular))
+    // MARK: - Top Bar
+
+    private var topBar: some View {
+        HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "building.columns.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(AppColors.accent)
+                Text("FocusBet Admin")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(AppColors.textPrimary)
             }
-            .foregroundStyle(selectedTab == index ? AppColors.accent : AppColors.textMuted)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(selectedTab == index ? AppColors.accent.opacity(0.1) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Spacer()
+
+            Text("Purdue University")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColors.textSecondary)
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                ForEach(dateRanges, id: \.self) { range in
+                    Button {
+                        dateRange = range
+                    } label: {
+                        Text(range)
+                            .font(.system(size: 11, weight: dateRange == range ? .semibold : .regular))
+                            .foregroundStyle(dateRange == range ? .white : AppColors.textSecondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(dateRange == range ? AppColors.accent : AppColors.bgTertiary)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    print("Export PDF")
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.doc").font(.system(size: 11))
+                        Text("Export PDF").font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(AppColors.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(AppColors.accent, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    isAdmin = false
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right").font(.system(size: 11))
+                        Text("Log Out").font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(AppColors.danger)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(AppColors.danger.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .background(AppColors.bgSecondary)
+        .overlay(alignment: .bottom) { AppColors.border.frame(height: 1) }
+    }
+
+    // MARK: - Overview Cards
+
+    private var overviewCards: some View {
+        let metrics: [(String, String, String, Bool?)] = [
+            ("847", "Sessions this week", "\u{2191} 12%", true),
+            ("214", "Active users", "+28 new", true),
+            ("74.2", "Avg focus score", "\u{2191} 3.1 pts", true),
+            ("58m", "Avg session length", "\u{2192} unchanged", nil),
+        ]
+
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 4), spacing: 14) {
+            ForEach(metrics, id: \.0) { value, label, change, positive in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(value)
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppColors.textPrimary)
+                    Text(label)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColors.textSecondary)
+                    Text(change)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(positive == true ? AppColors.accentLight : AppColors.textMuted)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppColors.bgSecondary)
+                .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+                .shadow(color: AppColors.cardShadow, radius: 6, y: 2)
+            }
+        }
+    }
+
+    // MARK: - Tab Selector
+
+    private var tabSelector: some View {
+        HStack(spacing: 0) {
+            tabBtn("Study Spaces", 0)
+            tabBtn("Program Effectiveness", 1)
+            tabBtn("Retention Signals", 2)
+            Spacer()
+        }
+    }
+
+    private func tabBtn(_ label: String, _ index: Int) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { selectedTab = index }
+        } label: {
+            VStack(spacing: 6) {
+                Text(label)
+                    .font(.system(size: 13, weight: selectedTab == index ? .semibold : .regular))
+                    .foregroundStyle(selectedTab == index ? AppColors.accent : AppColors.textMuted)
+                Rectangle()
+                    .fill(selectedTab == index ? AppColors.accent : Color.clear)
+                    .frame(height: 2)
+            }
+            .padding(.horizontal, 16)
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Facilities Tab
-
-    private var facilitiesTab: some View {
-        VStack(spacing: 20) {
-            // Key metrics
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 4), spacing: 16) {
-                metricCard("Total Active Users", "1,247", "person.2.fill")
-                metricCard("Sessions Today", "342", "clock.fill")
-                metricCard("Avg Session Duration", "2.1 hrs", "timer")
-                metricCard("Campus Utilization", "67%", "building.fill")
-            }
-
-            // Building usage chart
-            adminCard("Building Usage This Week") {
-                Chart(AdminData.buildingUsage) { item in
-                    BarMark(
-                        x: .value("Sessions", item.sessions),
-                        y: .value("Building", item.name)
-                    )
-                    .foregroundStyle(AppColors.accent)
-                    .cornerRadius(4)
-                }
-                .chartXAxis {
-                    AxisMarks(position: .bottom) { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                            .foregroundStyle(AppColors.border)
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textMuted)
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
-                }
-                .frame(height: 300)
-            }
-
-            // Peak hours heatmap
-            adminCard("Peak Hours Heatmap") {
-                peakHoursGrid
-            }
-
-            // Daily trend
-            adminCard("Daily Usage Trend (Last 7 Days)") {
-                Chart(AdminData.dailyTrend) { item in
-                    LineMark(
-                        x: .value("Day", item.day),
-                        y: .value("Sessions", item.sessions)
-                    )
-                    .foregroundStyle(AppColors.accent)
-                    .lineStyle(StrokeStyle(lineWidth: 2.5))
-
-                    AreaMark(
-                        x: .value("Day", item.day),
-                        y: .value("Sessions", item.sessions)
-                    )
-                    .foregroundStyle(
-                        .linearGradient(
-                            colors: [AppColors.accent.opacity(0.3), AppColors.accent.opacity(0.05)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-
-                    PointMark(
-                        x: .value("Day", item.day),
-                        y: .value("Sessions", item.sessions)
-                    )
-                    .foregroundStyle(AppColors.accent)
-                    .symbolSize(30)
-                }
-                .chartYAxis {
-                    AxisMarks { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                            .foregroundStyle(AppColors.border)
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textMuted)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
-                }
-                .frame(height: 200)
-            }
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case 0: studySpacesTab
+        case 1: programEffectivenessTab
+        default: retentionSignalsTab
         }
-        .padding(24)
     }
 
-    // MARK: - Students Tab
+    // MARK: - Tab 1: Study Spaces
 
-    private var studentsTab: some View {
-        VStack(spacing: 20) {
-            // Key metrics
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 3), spacing: 16) {
-                metricCard("Total Registered", "1,247", "person.crop.circle.fill")
-                metricCard("Avg Focus Score", "76", "brain.head.profile")
-                metricCard("Weekly Active Rate", "68%", "chart.line.uptrend.xyaxis")
+    private var studySpacesTab: some View {
+        let buildingFocus: [(String, Int)] = [
+            ("HSSE 3rd Floor", 82), ("WALC Basement", 79), ("Hicks 2nd Floor", 76),
+            ("WALC 1st Floor", 71), ("PMU Study Room", 68), ("Krach Atrium", 64),
+            ("WALC Main Floor", 58), ("Hicks Main", 55),
+        ]
+        let hourlyFocus: [(Int, Int)] = [
+            (8, 62), (9, 68), (10, 74), (11, 78), (12, 65), (13, 70),
+            (14, 76), (15, 80), (16, 78), (17, 72), (18, 68), (19, 74),
+            (20, 79), (21, 82), (22, 78), (23, 71),
+        ]
+        let occupancy: [(String, String, Int, String)] = [
+            ("HSSE 3rd Floor", "45%", 82, "High quality"),
+            ("WALC Basement", "72%", 79, "High quality"),
+            ("Hicks 2nd Floor", "58%", 76, "High quality"),
+            ("WALC Main Floor", "95%", 58, "Overcrowded"),
+            ("Krach Atrium", "82%", 64, "Needs attention"),
+        ]
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("For: Purdue Libraries — Space Planning & Occupancy Quality")
+                .font(.system(size: 11)).italic()
+                .foregroundStyle(AppColors.textMuted)
+
+            HStack(alignment: .top, spacing: 16) {
+                card("Avg Focus Score by Building") {
+                    Chart(buildingFocus, id: \.0) { name, score in
+                        BarMark(x: .value("Score", score), y: .value("Building", name))
+                            .foregroundStyle(score >= 75 ? AppColors.accentLight : (score >= 60 ? AppColors.warning : AppColors.danger))
+                            .cornerRadius(4)
+                    }
+                    .chartXScale(domain: 0...100)
+                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textSecondary) } }
+                    .frame(height: 240)
+                }
+
+                card("Focus by Time of Day") {
+                    Chart(hourlyFocus, id: \.0) { hour, score in
+                        BarMark(
+                            x: .value("Hour", hourLabel(hour)),
+                            y: .value("Score", score)
+                        )
+                        .foregroundStyle(AppColors.accentLight.gradient)
+                        .cornerRadius(3)
+                    }
+                    .chartYScale(domain: 40...90)
+                    .chartYAxis { AxisMarks { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .frame(height: 240)
+                }
             }
 
-            // Focus score by major
-            adminCard("Focus Score by Major") {
-                Chart(AdminData.majorScores) { item in
-                    BarMark(
-                        x: .value("Score", item.avgScore),
-                        y: .value("Major", item.major)
-                    )
-                    .foregroundStyle(AppColors.accent)
-                    .cornerRadius(4)
-                    .annotation(position: .trailing, spacing: 4) {
-                        Text("\(item.avgScore)")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
+            card("Occupancy vs Focus") {
+                tableView(
+                    headers: ["Space", "Avg Occupancy", "Avg Focus", "Signal"],
+                    rows: occupancy.map { name, occ, focus, signal in
+                        [name, occ, "\(focus)", signal]
+                    },
+                    signalColumn: 3
+                )
+            }
+        }
+    }
+
+    // MARK: - Tab 2: Program Effectiveness
+
+    private var programEffectivenessTab: some View {
+        let programs: [(String, Double, Double)] = [
+            ("Peer Success Coaching", 61.2, 72.8),
+            ("Supplemental Instruction", 65.4, 74.1),
+            ("Accountability Groups", 58.9, 67.3),
+            ("Study Skills Consultations", 60.1, 63.8),
+        ]
+        let cohorts: [(String, Double)] = [
+            ("PSC Participants", 4.8), ("SI Participants", 4.2),
+            ("Non-participants", 2.9), ("Academic Notice", 1.7),
+        ]
+        let contentTypes: [(String, Int)] = [
+            ("Problem Sets", 78), ("Writing", 74), ("Reading", 71),
+            ("Video Lectures", 65), ("Flashcards", 62),
+        ]
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("For: Academic Success Center — Coaching & Program Impact")
+                .font(.system(size: 11)).italic()
+                .foregroundStyle(AppColors.textMuted)
+
+            card("Before vs After Focus by Program") {
+                let flat: [(String, String, Double)] = programs.flatMap { name, before, after in
+                    [(name, "Before", before), (name, "After", after)]
+                }
+                Chart(flat, id: \.0) { name, type, score in
+                    BarMark(x: .value("Score", score), y: .value("Program", name))
+                        .foregroundStyle(type == "After" ? AppColors.accentLight : AppColors.textMuted)
+                        .cornerRadius(4)
+                        .position(by: .value("Type", type))
                 }
                 .chartXScale(domain: 0...100)
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                            .foregroundStyle(AppColors.border)
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textMuted)
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
-                }
+                .chartForegroundStyleScale(["Before": AppColors.textMuted, "After": AppColors.accentLight])
+                .chartXAxis { AxisMarks { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                    AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                } }
+                .chartYAxis { AxisMarks { _ in AxisValueLabel().font(.system(size: 11)).foregroundStyle(AppColors.textSecondary) } }
                 .frame(height: 200)
             }
 
-            // Study hours by year
-            adminCard("Study Hours by Year (Weekly Avg)") {
-                Chart(AdminData.yearHours) { item in
-                    BarMark(
-                        x: .value("Year", item.year),
-                        y: .value("Hours", item.hours)
-                    )
-                    .foregroundStyle(AppColors.accent.gradient)
-                    .cornerRadius(6)
-                    .annotation(position: .top, spacing: 4) {
-                        Text("\(item.hours, specifier: "%.1f")h")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(AppColors.textSecondary)
+            HStack(alignment: .top, spacing: 16) {
+                card("Study Days per Week by Cohort") {
+                    Chart(cohorts, id: \.0) { name, days in
+                        BarMark(x: .value("Cohort", name), y: .value("Days", days))
+                            .foregroundStyle(days >= 4 ? AppColors.accentLight : (days >= 3 ? AppColors.warning : AppColors.danger))
+                            .cornerRadius(4)
+                            .annotation(position: .top, spacing: 2) {
+                                Text("\(days, specifier: "%.1f")")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
                     }
+                    .chartYScale(domain: 0...6)
+                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .frame(height: 200)
                 }
-                .chartYAxis {
-                    AxisMarks { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                            .foregroundStyle(AppColors.border)
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textMuted)
+
+                card("Focus Score by Content Type") {
+                    Chart(contentTypes, id: \.0) { name, score in
+                        BarMark(x: .value("Score", score), y: .value("Type", name))
+                            .foregroundStyle(AppColors.accentLight)
+                            .cornerRadius(4)
                     }
+                    .chartXScale(domain: 0...100)
+                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textSecondary) } }
+                    .frame(height: 200)
                 }
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel()
-                            .foregroundStyle(AppColors.textSecondary)
+            }
+        }
+    }
+
+    // MARK: - Tab 3: Retention Signals
+
+    private var retentionSignalsTab: some View {
+        let semesterTrend: [(Int, Int)] = [
+            (1, 72), (2, 74), (3, 76), (4, 78), (5, 77), (6, 75),
+            (7, 65), (8, 62), (9, 70), (10, 73), (11, 76), (12, 78),
+            (13, 74), (14, 71), (15, 68), (16, 64),
+        ]
+        let yearData: [(String, Int)] = [
+            ("Freshman", 68), ("Sophomore", 72), ("Junior", 76), ("Senior", 74), ("Graduate", 80),
+        ]
+        let collegeData: [(String, Int)] = [
+            ("Engineering", 76), ("Science", 74), ("Management", 71), ("Liberal Arts", 69),
+        ]
+        let courseData: [(String, Int, Double, String, String)] = [
+            ("MA 153", 412, 58.2, "187 (45%)", "+9.4 pts"),
+            ("CHM 115", 389, 61.4, "143 (37%)", "+7.1 pts"),
+            ("PHYS 172", 521, 55.8, "198 (38%)", "+4.2 pts"),
+            ("BIOL 110", 298, 63.1, "89 (30%)", "+3.8 pts"),
+        ]
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("For: VP Student Success — Early Alert & Semester Trends")
+                .font(.system(size: 11)).italic()
+                .foregroundStyle(AppColors.textMuted)
+
+            card("Campus Focus Trend — Semester Arc") {
+                Chart(semesterTrend, id: \.0) { week, score in
+                    LineMark(x: .value("Week", week), y: .value("Score", score))
+                        .foregroundStyle(AppColors.accentLight)
+                        .lineStyle(StrokeStyle(lineWidth: 2.5))
+                    AreaMark(x: .value("Week", week), y: .value("Score", score))
+                        .foregroundStyle(
+                            .linearGradient(colors: [AppColors.accentLight.opacity(0.2), .clear],
+                                            startPoint: .top, endPoint: .bottom)
+                        )
+                    PointMark(x: .value("Week", week), y: .value("Score", score))
+                        .foregroundStyle(score <= 65 ? AppColors.danger : AppColors.accentLight)
+                        .symbolSize(score <= 65 ? 40 : 20)
+                }
+                .chartYScale(domain: 50...85)
+                .chartXAxis { AxisMarks(values: [1, 4, 7, 8, 12, 16]) { v in
+                    AxisValueLabel {
+                        if let w = v.as(Int.self) { Text("Wk \(w)").font(.system(size: 9)).foregroundStyle(AppColors.textMuted) }
                     }
+                } }
+                .chartYAxis { AxisMarks { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                    AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                } }
+                .frame(height: 180)
+
+                HStack(spacing: 4) {
+                    Circle().fill(AppColors.danger).frame(width: 6, height: 6)
+                    Text("Midterm dip (Weeks 7-8)").font(.system(size: 9)).foregroundStyle(AppColors.textMuted)
                 }
-                .frame(height: 220)
             }
 
-            // Preferred buildings by major
-            adminCard("Preferred Buildings by Major") {
-                VStack(spacing: 0) {
-                    // Header
-                    HStack {
-                        Text("Major").frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Building").frame(width: 80)
-                        Text("Avg Score").frame(width: 80)
-                        Text("Total Hours").frame(width: 90)
+            // Alert cards
+            HStack(spacing: 14) {
+                alertCard("23 students", "3+ week decline, not on BoilerConnect", .red)
+                alertCard("41 students", "2-week decline, partially flagged", .orange)
+                alertCard("67 students", "Showed decline but recovered", .green)
+            }
+            Text("All counts are aggregate only. No individual student data is displayed.")
+                .font(.system(size: 9)).italic()
+                .foregroundStyle(AppColors.textMuted)
+
+            HStack(alignment: .top, spacing: 16) {
+                card("Focus by Student Year") {
+                    Chart(yearData, id: \.0) { year, score in
+                        BarMark(x: .value("Year", year), y: .value("Score", score))
+                            .foregroundStyle(AppColors.accentLight.gradient)
+                            .cornerRadius(4)
                     }
-                    .font(.system(size: 11, weight: .semibold))
+                    .chartYScale(domain: 50...90)
+                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .frame(height: 180)
+                }
+                card("Focus by College") {
+                    Chart(collegeData, id: \.0) { college, score in
+                        BarMark(x: .value("College", college), y: .value("Score", score))
+                            .foregroundStyle(AppColors.accentLight.gradient)
+                            .cornerRadius(4)
+                    }
+                    .chartYScale(domain: 50...90)
+                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
+                    .frame(height: 180)
+                }
+            }
+
+            card("DFW Course Tracking") {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Course").frame(width: 80, alignment: .leading)
+                        Text("Enrollment").frame(width: 80)
+                        Text("Avg Focus").frame(width: 80)
+                        Text("Incentive Participants").frame(maxWidth: .infinity)
+                        Text("Focus Lift").frame(width: 80)
+                    }
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(AppColors.textMuted)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, 12).padding(.bottom, 6)
 
                     AppColors.border.frame(height: 1)
 
-                    ForEach(AdminData.majorBuildings) { row in
+                    ForEach(courseData, id: \.0) { course, enroll, focus, participants, lift in
                         HStack {
-                            Text(row.major)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .foregroundStyle(AppColors.textPrimary)
-                            Text(row.building)
+                            Text(course).fontWeight(.semibold).frame(width: 80, alignment: .leading)
+                            Text("\(enroll)").frame(width: 80)
+                            Text(String(format: "%.1f", focus))
+                                .foregroundStyle(focus < 60 ? AppColors.danger : AppColors.textSecondary)
                                 .frame(width: 80)
-                                .foregroundStyle(AppColors.accent)
+                            Text(participants).frame(maxWidth: .infinity)
+                            Text(lift)
+                                .foregroundStyle(AppColors.accentLight)
                                 .fontWeight(.semibold)
-                            Text("\(row.avgScore)")
                                 .frame(width: 80)
-                                .foregroundStyle(AppColors.textSecondary)
-                            Text("\(row.totalHours)hrs")
-                                .frame(width: 90)
-                                .foregroundStyle(AppColors.textSecondary)
                         }
-                        .font(.system(size: 13))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-
-                        if row.id != AdminData.majorBuildings.last?.id {
-                            AppColors.border.opacity(0.5).frame(height: 1).padding(.horizontal, 12)
-                        }
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColors.textPrimary)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(courseData.firstIndex(where: { $0.0 == course })! % 2 == 1 ? AppColors.bgPrimary : Color.clear)
                     }
                 }
             }
-
-            // Gender distribution
-            adminCard("Gender Distribution") {
-                HStack(spacing: 32) {
-                    Chart(AdminData.genderStats) { item in
-                        SectorMark(
-                            angle: .value("Percent", item.percent),
-                            innerRadius: .ratio(0.6),
-                            outerRadius: .ratio(1.0)
-                        )
-                        .foregroundStyle(by: .value("Gender", item.label))
-                    }
-                    .chartForegroundStyleScale([
-                        "Female": AppColors.userColors[4],
-                        "Male": AppColors.userColors[3],
-                        "Other": AppColors.textMuted,
-                    ])
-                    .chartLegend(.hidden)
-                    .frame(width: 160, height: 160)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(AdminData.genderStats) { stat in
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(genderColor(stat.label))
-                                    .frame(width: 10, height: 10)
-                                Text(stat.label)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(AppColors.textPrimary)
-                                Spacer()
-                                Text("\(Int(stat.percent))%")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
-                        }
-                    }
-                    .frame(width: 160)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-            }
-        }
-        .padding(24)
-    }
-
-    private func genderColor(_ label: String) -> Color {
-        switch label {
-        case "Female": return AppColors.userColors[4]
-        case "Male": return AppColors.userColors[3]
-        default: return AppColors.textMuted
         }
     }
 
     // MARK: - Reusable Components
 
-    private func metricCard(_ label: String, _ value: String, _ icon: String) -> some View {
-        VStack(spacing: 10) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundStyle(AppColors.accent)
-                Spacer()
-            }
-            HStack {
-                Text(value)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppColors.accent)
-                Spacer()
-            }
-            HStack {
-                Text(label)
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppColors.textSecondary)
-                Spacer()
-            }
-        }
-        .padding(16)
-        .background(AppColors.bgSecondary)
-        .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
-        .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
-    }
-
-    private func adminCard<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
             content()
         }
-        .padding(20)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
-        .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
+        .shadow(color: AppColors.cardShadow, radius: 6, y: 2)
     }
 
-    // MARK: - Peak Hours Grid
+    private func alertCard(_ count: String, _ desc: String, _ level: AlertLevel) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(level.color)
+                .frame(width: 4)
 
-    private var peakHoursGrid: some View {
-        let buildings = ["WALC", "HIKS", "LWSN", "PMU", "KNOY", "COREC", "HOVD", "STEW"]
-        let hours = Array(6...23)
-        let maxCount = AdminData.peakHours.map(\.count).max() ?? 1
-
-        return VStack(spacing: 2) {
-            // Hour labels
-            HStack(spacing: 2) {
-                Text("")
-                    .frame(width: 50)
-                ForEach(hours, id: \.self) { h in
-                    Text(h <= 12 ? "\(h)a" : "\(h - 12)p")
-                        .font(.system(size: 8))
-                        .foregroundStyle(AppColors.textMuted)
-                        .frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(count)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(AppColors.textPrimary)
+                    Text(level.label)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(level.color)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(level.color.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
+                Text(desc)
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColors.textSecondary)
             }
+            Spacer()
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .background(AppColors.bgSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: AppColors.cardShadow, radius: 4, y: 1)
+    }
 
-            ForEach(buildings, id: \.self) { building in
-                HStack(spacing: 2) {
-                    Text(building)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(AppColors.textSecondary)
-                        .frame(width: 50, alignment: .trailing)
-
-                    ForEach(hours, id: \.self) { hour in
-                        let count = AdminData.peakHours.first {
-                            $0.building == building && $0.hour == hour
-                        }?.count ?? 0
-                        let intensity = Double(count) / Double(maxCount)
-
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(heatColor(intensity))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 20)
-                    }
-                }
+    private enum AlertLevel {
+        case red, orange, green
+        var color: Color {
+            switch self {
+            case .red: return AppColors.danger
+            case .orange: return AppColors.warning
+            case .green: return AppColors.accentLight
             }
-
-            // Legend
-            HStack(spacing: 4) {
-                Spacer()
-                Text("Low")
-                    .font(.system(size: 9))
-                    .foregroundStyle(AppColors.textMuted)
-                ForEach([0.1, 0.3, 0.5, 0.7, 0.9], id: \.self) { v in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(heatColor(v))
-                        .frame(width: 14, height: 10)
-                }
-                Text("High")
-                    .font(.system(size: 9))
-                    .foregroundStyle(AppColors.textMuted)
+        }
+        var label: String {
+            switch self {
+            case .red: return "High Risk"
+            case .orange: return "Monitor"
+            case .green: return "Resolved"
             }
-            .padding(.top, 4)
         }
     }
 
-    private func heatColor(_ intensity: Double) -> Color {
-        if intensity < 0.05 { return AppColors.bgTertiary }
-        return AppColors.accent.opacity(0.15 + intensity * 0.85)
+    private func tableView(headers: [String], rows: [[String]], signalColumn: Int?) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                ForEach(headers.indices, id: \.self) { i in
+                    Text(headers[i])
+                        .frame(maxWidth: .infinity, alignment: i == 0 ? .leading : .center)
+                }
+            }
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(AppColors.textMuted)
+            .padding(.horizontal, 12).padding(.bottom, 6)
+
+            AppColors.border.frame(height: 1)
+
+            ForEach(rows.indices, id: \.self) { rowIdx in
+                HStack {
+                    ForEach(rows[rowIdx].indices, id: \.self) { colIdx in
+                        if colIdx == signalColumn {
+                            Text(rows[rowIdx][colIdx])
+                                .foregroundStyle(signalColor(rows[rowIdx][colIdx]))
+                                .fontWeight(.medium)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        } else {
+                            Text(rows[rowIdx][colIdx])
+                                .foregroundStyle(colIdx == 0 ? AppColors.textPrimary : AppColors.textSecondary)
+                                .fontWeight(colIdx == 0 ? .medium : .regular)
+                                .frame(maxWidth: .infinity, alignment: colIdx == 0 ? .leading : .center)
+                        }
+                    }
+                }
+                .font(.system(size: 11))
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(rowIdx % 2 == 1 ? AppColors.bgPrimary : Color.clear)
+            }
+        }
+    }
+
+    private func signalColor(_ signal: String) -> Color {
+        if signal.contains("High quality") { return AppColors.accentLight }
+        if signal.contains("Overcrowded") { return AppColors.warning }
+        return AppColors.danger
+    }
+
+    private func hourLabel(_ hour: Int) -> String {
+        if hour == 0 { return "12a" }
+        if hour < 12 { return "\(hour)a" }
+        if hour == 12 { return "12p" }
+        return "\(hour - 12)p"
+    }
+
+    private var ferpaNotice: some View {
+        Text("All data is anonymized and aggregate. Minimum cohort size of 10. FERPA compliant.")
+            .font(.system(size: 9)).italic()
+            .foregroundStyle(AppColors.textMuted)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 8)
     }
 }

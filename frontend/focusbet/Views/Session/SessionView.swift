@@ -18,7 +18,7 @@ struct SessionView: View {
         self.duration = duration
         self.buildingId = buildingId
         self.onNavigate = onNavigate
-        _remainingSeconds = State(initialValue: duration * 60)
+        _remainingSeconds = State(initialValue: duration == 1 ? 30 : duration * 60)
     }
 
     private var building: Building {

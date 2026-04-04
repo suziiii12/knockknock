@@ -74,7 +74,7 @@ private struct SessionCard: View {
     let session: StudySession
 
     private var scoreColor: Color {
-        if session.focusScore >= 80 { return AppColors.accent }
+        if session.focusScore >= 80 { return AppColors.accentLight }
         if session.focusScore >= 60 { return AppColors.warning }
         return AppColors.danger
     }

@@ -12,7 +12,8 @@ enum AppColors {
     static let textMuted = Color(red: 160/255, green: 170/255, blue: 169/255)        // Light gray
 
     // Functional
-    static let accent = Color(red: 0/255, green: 143/255, blue: 136/255)             // #008F88 Dark Cyan
+    static let accent = Color(red: 0/255, green: 61/255, blue: 58/255)              // #003D3A Pine Teal
+    static let accentLight = Color(red: 0/255, green: 143/255, blue: 136/255)       // #008F88 Dark Cyan (secondary)
     static let warning = Color(red: 245/255, green: 166/255, blue: 35/255)           // Amber
     static let danger = Color(red: 220/255, green: 53/255, blue: 53/255)             // Red
 

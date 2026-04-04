@@ -4,7 +4,7 @@ struct StartSessionView: View {
     let onNavigate: (Route) -> Void
     @State private var selectedDuration: Int = 120
     @State private var locationService = LocationService()
-    private let durations = [60, 120, 240]
+    private let durations = [1, 60, 120, 240] // 1 = 30s test mode
 
     private var building: Building {
         locationService.detectedBuilding ?? MockData.buildings.first { $0.id == "walc" }!
@@ -75,12 +75,12 @@ struct StartSessionView: View {
                             selectedDuration = duration
                         } label: {
                             VStack(spacing: 6) {
-                                Text("\(duration / 60)h")
+                                Text(duration == 1 ? "30s" : "\(duration / 60)h")
                                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                                Text("\(duration) min")
+                                Text(duration == 1 ? "Test" : "\(duration) min")
                                     .font(AppFonts.caption)
                             }
-                            .foregroundStyle(selectedDuration == duration ? AppColors.bgPrimary : AppColors.textPrimary)
+                            .foregroundStyle(selectedDuration == duration ? .white : AppColors.textPrimary)
                             .frame(width: 120, height: 100)
                             .background(
                                 selectedDuration == duration
@@ -104,8 +104,8 @@ struct StartSessionView: View {
             // Session summary
             VStack(spacing: 12) {
                 SummaryRow(label: "Building", value: building.abbreviation)
-                SummaryRow(label: "Duration", value: "\(selectedDuration / 60) hour\(selectedDuration >= 120 ? "s" : "")")
-                SummaryRow(label: "Max Time Score", value: "\(min(selectedDuration * 100 / 240, 100))pts")
+                SummaryRow(label: "Duration", value: selectedDuration == 1 ? "30 seconds (test)" : "\(selectedDuration / 60) hour\(selectedDuration >= 120 ? "s" : "")")
+                SummaryRow(label: "Max Time Score", value: selectedDuration == 1 ? "N/A" : "\(min(selectedDuration * 100 / 240, 100))pts")
             }
             .padding(20)
             .background(AppColors.bgSecondary)
