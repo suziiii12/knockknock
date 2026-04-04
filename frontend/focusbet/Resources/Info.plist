@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSCameraUsageDescription</key>
+    <string>FocusBet uses your camera to track focus during study sessions.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>FocusBet uses your location to detect which campus building you're studying in.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>FocusBet records your screen to analyze cognitive demand with AI.</string>
+</dict>
+</plist>
