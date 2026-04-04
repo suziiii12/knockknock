@@ -43,15 +43,15 @@ struct SessionView: View {
                 // Tracking badge
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.green)
+                        .fill(AppColors.accent)
                         .frame(width: 6, height: 6)
                     Text("Tracking active")
                         .font(AppFonts.small)
-                        .foregroundStyle(Color.green)
+                        .foregroundStyle(AppColors.accent)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.black.opacity(0.6))
+                .background(AppColors.bgSecondary.opacity(0.9))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .padding(.leading, 36)
                 .padding(.top, 36)
@@ -59,7 +59,7 @@ struct SessionView: View {
                 // Simulated gaze dots
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(Color.green.opacity(0.7))
+                        .fill(AppColors.accent.opacity(0.7))
                         .frame(width: 8, height: 8)
                         .position(
                             x: CGFloat.random(in: 200...500),

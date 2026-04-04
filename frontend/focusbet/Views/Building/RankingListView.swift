@@ -40,7 +40,7 @@ struct RankingListView: View {
                                 )
                             if entry.isStudying {
                                 Circle()
-                                    .fill(Color.green)
+                                    .fill(AppColors.accent)
                                     .frame(width: 5, height: 5)
                             }
                         }

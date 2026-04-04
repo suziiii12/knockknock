@@ -107,7 +107,7 @@ struct ResultView: View {
                             Text("Start Another")
                         }
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AppColors.bgPrimary)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                         .background(AppColors.accent)

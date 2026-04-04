@@ -102,7 +102,7 @@ struct EditProfileView: View {
                     } label: {
                         Text("Save Changes")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(isFormValid ? AppColors.bgPrimary : AppColors.textMuted)
+                            .foregroundStyle(isFormValid ? .white : AppColors.textMuted)
                             .frame(width: 160, height: 44)
                             .background(isFormValid ? AppColors.accent : AppColors.bgTertiary)
                             .clipShape(RoundedRectangle(cornerRadius: 10))

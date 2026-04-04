@@ -82,7 +82,6 @@ struct CampusMapView: View {
                 }
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-            .preferredColorScheme(.dark)
 
             // Legend
             HStack(spacing: 16) {

@@ -48,7 +48,7 @@ struct CheckInModalView: View {
                     } label: {
                         Text(options[i])
                             .font(AppFonts.caption)
-                            .foregroundStyle(selectedOption == i ? AppColors.bgPrimary : AppColors.textPrimary)
+                            .foregroundStyle(selectedOption == i ? .white : AppColors.textPrimary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(selectedOption == i ? AppColors.accent : AppColors.bgTertiary)

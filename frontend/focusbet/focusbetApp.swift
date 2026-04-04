@@ -6,13 +6,14 @@ struct FocusBetApp: App {
         // TEMPORARY: reset auth for testing — comment out after confirming flow works
         UserDefaults.standard.set(false, forKey: "isLoggedIn")
         UserDefaults.standard.set(false, forKey: "isProfileComplete")
+        UserDefaults.standard.set(false, forKey: "isAdmin")
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .frame(minWidth: 900, minHeight: 600)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
                 .background(AppColors.bgPrimary)
         }
         .windowStyle(.hiddenTitleBar)

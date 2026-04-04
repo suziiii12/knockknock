@@ -186,7 +186,7 @@ struct ProfileView: View {
                                         MockData.streakDots[i]
                                             ? Image(systemName: "checkmark")
                                                 .font(.system(size: 10, weight: .bold))
-                                                .foregroundStyle(AppColors.bgPrimary)
+                                                .foregroundStyle(.white)
                                             : nil
                                     )
                                 Text(days[i])

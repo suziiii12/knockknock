@@ -36,15 +36,15 @@ struct StartSessionView: View {
                 } else {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(Color.green)
+                            .fill(AppColors.accent)
                             .frame(width: 8, height: 8)
                         Text(locationService.isAuthorized ? "GPS Detected" : "GPS Off")
                             .font(AppFonts.caption)
-                            .foregroundStyle(Color.green)
+                            .foregroundStyle(AppColors.accent)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.green.opacity(0.1))
+                    .background(AppColors.accent.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                     Text(building.name)
@@ -125,7 +125,7 @@ struct StartSessionView: View {
                     Text("Start Focus")
                 }
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(AppColors.bgPrimary)
+                .foregroundStyle(.white)
                 .frame(width: 240, height: 52)
                 .background(AppColors.accent)
                 .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusButton))

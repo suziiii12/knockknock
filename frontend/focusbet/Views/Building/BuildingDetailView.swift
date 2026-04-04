@@ -51,15 +51,15 @@ struct BuildingDetailView: View {
 
                         HStack(spacing: 4) {
                             Circle()
-                                .fill(Color.green)
+                                .fill(AppColors.accent)
                                 .frame(width: 6, height: 6)
                             Text("Live")
                                 .font(AppFonts.small)
-                                .foregroundStyle(Color.green)
+                                .foregroundStyle(AppColors.accent)
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Color.green.opacity(0.1))
+                        .background(AppColors.accent.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
 
                         Spacer()
@@ -129,7 +129,7 @@ struct BuildingDetailView: View {
     private func colorForActivity(_ type: ActivityFeedItem.ActivityType) -> Color {
         switch type {
         case .sessionComplete: return AppColors.accent
-        case .studying: return .green
+        case .studying: return AppColors.accent
         case .overtake: return AppColors.warning
         case .kingTakeover: return AppColors.userColors[1]
         }

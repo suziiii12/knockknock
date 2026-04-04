@@ -92,7 +92,7 @@ struct ProfileSetupView: View {
                 } label: {
                     Text("Complete Setup")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(isFormValid ? AppColors.bgPrimary : AppColors.textMuted)
+                        .foregroundStyle(isFormValid ? .white : AppColors.textMuted)
                         .frame(width: 280, height: 50)
                         .background(isFormValid ? AppColors.accent : AppColors.bgTertiary)
                         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))

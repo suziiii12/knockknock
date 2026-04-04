@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WelcomeView: View {
     var onSignIn: () -> Void
+    @State private var showAdminLogin = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,7 +20,7 @@ struct WelcomeView: View {
 
                 Text("FocusBet")
                     .font(.system(size: 40, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppColors.accent)
+                    .foregroundStyle(AppColors.textPrimary)
 
                 Text("AI-Powered Study Competition")
                     .font(.system(size: 16, weight: .medium))
@@ -48,10 +49,20 @@ struct WelcomeView: View {
                 Text("Learn More")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppColors.textMuted)
+
+                Button("Admin Access") {
+                    showAdminLogin = true
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(AppColors.textMuted)
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 60)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColors.bgPrimary)
+        .sheet(isPresented: $showAdminLogin) {
+            AdminLoginView()
+        }
     }
 }

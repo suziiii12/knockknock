@@ -16,11 +16,14 @@ enum Route: Hashable {
 struct ContentView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     @AppStorage("isProfileComplete") private var isProfileComplete = false
+    @AppStorage("isAdmin") private var isAdmin = false
     @State private var showWorldID = false
 
     var body: some View {
         Group {
-            if !isLoggedIn && !showWorldID {
+            if isAdmin {
+                AdminDashboardView()
+            } else if !isLoggedIn && !showWorldID {
                 WelcomeView(onSignIn: { showWorldID = true })
             } else if !isLoggedIn && showWorldID {
                 WorldIDView()
