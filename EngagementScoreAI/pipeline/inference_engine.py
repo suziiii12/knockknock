@@ -3,31 +3,30 @@ pipeline/inference_engine.py
 ------------------------------
 Backend inference engine — externally controllable.
 
-Designed to be driven by an external backend (HTTP API or direct Python import):
-
   Direct Python usage:
     from pipeline.inference_engine import engine
-    session_id = engine.start(session_id="abc123", content_type="coding")
+    session_id = engine.start(content_type="coding")
     ...
-    csv_path = engine.stop()   # returns path of written CSV file
+    csv_path = engine.stop()
 
-  Via HTTP (api/server.py wraps these calls):
+  Via HTTP (api/server.py):
     POST /sessions/start  →  engine.start(...)
-    POST /sessions/stop   →  engine.stop()
+    POST /sessions/{id}/stop  →  engine.stop()
 
 On stop():
   1. Marks session ended in SQLite
-  2. Calls session_export.export_session() → writes exports/session_N_TIMESTAMP.csv
+  2. Exports score stream to CSV
   3. Returns the Path to the CSV file
 
-Window: 120s rolling (1200 frames at 10fps)
-Epoch:  score emitted every 30s, each covering the trailing 2 minutes
+Window: equal to epoch_sec, non-overlapping clips
+Epoch:  score written every epoch_sec seconds for each clip
 """
 
 import time
 import threading
 import datetime
 import numpy as np
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Callable, List
 from collections import deque
@@ -36,25 +35,25 @@ from pipeline.webcam_capture import WebcamCapture, BehavioralAccumulator
 from pipeline.study_context import StudyContext
 from pipeline.behavioral_listener import start_listeners, stop_listeners
 from pipeline.session_export import export_session, EXPORT_DIR
-from db.store import (
-    init_db, create_session, end_session,
-    insert_score, ScoreRecord,
-)
+from db.store import init_db, create_session, end_session, insert_score
 
 WEIGHTS_PATH      = Path(__file__).parent.parent / "weights" / "engagement_lstm.pt"
-WINDOW_SEC        = 120
 FPS_DEFAULT       = 10
 EPOCH_SEC_DEFAULT = 30.0
 
 
-class InferenceEngine:
-    """
-    Pure backend pipeline. No UI.
+@dataclass
+class ScoreRecord:
+    session_id: int
+    window_start: float
+    window_end: float
+    score: float
+    body_engagement: float
+    daisee_class: str
+    confidence: float
 
-    Externally controllable — start/stop from any Python code or HTTP call.
-    Writes scores to SQLite continuously.
-    Exports full score sequence to CSV when stop() is called.
-    """
+
+class InferenceEngine:
 
     def __init__(
         self,
@@ -65,23 +64,19 @@ class InferenceEngine:
     ):
         self.fps           = fps
         self.epoch_sec     = epoch_sec
-        self.window_frames = WINDOW_SEC * fps
+        self.window_frames = max(1, int(self.epoch_sec * fps))
+        self.camera_index  = camera_index
         self.export_dir    = export_dir or EXPORT_DIR
 
         self.behavioral = BehavioralAccumulator()
-        self.capture    = WebcamCapture(
-            fps=fps,
-            window_size=self.window_frames,
-            camera_index=camera_index,
-            behavioral=self.behavioral,
-        )
+        self.capture    = None
         self.study_context = StudyContext()
 
         self._model        = None
         self._model_loaded = False
 
         self._session_id: Optional[int]                = None
-        self._external_id: Optional[str]               = None  # caller-supplied ID
+        self._external_id: Optional[str]               = None
         self._running      = False
         self._epoch_thread: Optional[threading.Thread] = None
         self._lock         = threading.Lock()
@@ -89,14 +84,20 @@ class InferenceEngine:
         self._kb_listener = None
         self._ms_listener = None
 
-        # Callbacks: registered by api/server.py for SSE push
-        self._callbacks: List[Callable] = []
-
-        # In-memory ring of recent score dicts (for /status polling)
-        self._recent_scores: deque = deque(maxlen=20)
+        self._callbacks: List[Callable]  = []
+        self._recent_scores: deque       = deque(maxlen=20)
 
         init_db()
         self._load_model()
+
+    def _build_capture(self):
+        self.window_frames = max(1, int(self.epoch_sec * self.fps))
+        self.capture = WebcamCapture(
+            fps=self.fps,
+            window_size=self.window_frames,
+            camera_index=self.camera_index,
+            behavioral=self.behavioral,
+        )
 
     # ------------------------------------------------------------------ #
     #  External control API
@@ -104,45 +105,27 @@ class InferenceEngine:
 
     def start(
         self,
-        content_type: str    = "general",
+        content_type: str     = "general",
         content_demand: float = 50.0,
         cognitive_load: float = 50.0,
         session_id: Optional[str] = None,
     ) -> int:
-        """
-        Start the pipeline and open a new DB session.
-
-        Parameters
-        ----------
-        content_type   : "general" | "coding" | "reading" | "video" | "math"
-        content_demand : 0–100  (from TRIBE v2 or set manually)
-        cognitive_load : 0–100  (from pupil tracker or set manually)
-        session_id     : optional string ID supplied by the external caller
-                         (stored as content_type suffix for traceability)
-
-        Returns
-        -------
-        int  DB session_id
-        """
         if self._running:
             raise RuntimeError(
                 f"Engine already running (session {self._session_id}). "
-                "Call stop() before starting a new session."
+                "Call stop() first."
             )
 
         self._external_id = session_id
 
-        # Tag content_type with external ID if provided so it's queryable
-        db_content_type = content_type
-        if session_id:
-            db_content_type = f"{content_type}:{session_id}"
-
+        db_content_type = f"{content_type}:{session_id}" if session_id else content_type
         self._session_id   = create_session(content_type=db_content_type)
         self.study_context = StudyContext(content_type=content_type)
         self.study_context.content_demand_score = content_demand
         self.study_context.cognitive_load_score  = cognitive_load
 
         self._running = True
+        self._build_capture()
         self.capture.start()
         self._kb_listener, self._ms_listener = start_listeners(self.behavioral)
 
@@ -154,18 +137,11 @@ class InferenceEngine:
         print(
             f"[InferenceEngine] Session {self._session_id} started"
             + (f" (external_id={session_id})" if session_id else "")
-            + f" | window={WINDOW_SEC}s epoch={self.epoch_sec}s fps={self.fps}"
+            + f" | window={self.epoch_sec}s epoch={self.epoch_sec}s fps={self.fps}"
         )
         return self._session_id
 
     def stop(self) -> Optional[Path]:
-        """
-        Stop the pipeline, close the DB session, and export scores to CSV.
-
-        Returns
-        -------
-        Path  to the exported CSV file, or None if no scores were recorded.
-        """
         if not self._running:
             return None
 
@@ -186,8 +162,6 @@ class InferenceEngine:
                 csv_path = export_session(
                     session_id=sid,
                     export_dir=self.export_dir,
-                    window_sec=WINDOW_SEC,
-                    epoch_sec=self.epoch_sec,
                 )
             except Exception as e:
                 print(f"[InferenceEngine] CSV export failed: {e}")
@@ -197,21 +171,14 @@ class InferenceEngine:
         return csv_path
 
     # ------------------------------------------------------------------ #
-    #  Callback registration (used by api/server.py for SSE)
+    #  Callbacks & accessors
     # ------------------------------------------------------------------ #
 
     def on_score(self, callback: Callable):
-        """
-        Register a function called after each score is written to the DB.
-        Signature: callback(record: ScoreRecord, snapshot: StudyContextSnapshot)
-        """
+        """Register callback(record, snapshot) called after each score write."""
         self._callbacks.append(callback)
 
-    # ------------------------------------------------------------------ #
-    #  Read-only accessors
-    # ------------------------------------------------------------------ #
-
-    def latest_scores(self, n: int = 10) -> list:
+    def latest_scores(self, n: int = 10) -> List[float]:
         with self._lock:
             return list(self._recent_scores)[-n:]
 
@@ -228,17 +195,13 @@ class InferenceEngine:
         return self._running
 
     def buffer_fill(self) -> float:
-        """0.0–1.0 fraction of the 2-min window that has been collected."""
-        return self.capture.get_buffer_fill()
+        return self.capture.get_buffer_fill() if self.capture else 0.0
 
-    def set_content_demand(self, v: float):
-        self.study_context.content_demand_score = v
-
-    def set_cognitive_load(self, v: float):
-        self.study_context.cognitive_load_score = v
+    def set_content_demand(self, v: float): self.study_context.content_demand_score = v
+    def set_cognitive_load(self, v: float): self.study_context.cognitive_load_score  = v
 
     # ------------------------------------------------------------------ #
-    #  Epoch loop (background thread)
+    #  Epoch loop
     # ------------------------------------------------------------------ #
 
     def _epoch_loop(self):
@@ -246,88 +209,56 @@ class InferenceEngine:
         while self._running:
             sleep_for = next_tick - time.time()
             if sleep_for > 0:
-                time.sleep(min(sleep_for, 1.0))  # wake at most every 1s to check _running
+                time.sleep(min(sleep_for, 1.0))
                 continue
-            next_tick += self.epoch_sec
+
             if not self._running:
                 break
 
             window = self.capture.get_window()
             if window is None:
                 pct = self.capture.get_buffer_fill() * 100
-                print(f"[InferenceEngine] Buffer filling… {pct:.0f}% of {WINDOW_SEC}s")
+                print(f"[InferenceEngine] Buffer filling… {pct:.0f}% of {self.epoch_sec}s")
+                time.sleep(0.5)
                 continue
 
             window_end   = time.time()
-            window_start = window_end - WINDOW_SEC
+            window_start = window_end - self.epoch_sec
             self._run_epoch(window, window_start, window_end)
+            next_tick = window_end + self.epoch_sec
 
     def _run_epoch(self, window: np.ndarray, window_start: float, window_end: float):
-        engagement, daisee_class, confidence = self._infer(window)
-
-        debug   = self.capture.get_debug_info()
-        posture = debug.get("posture_score", 0.5)
-        blinks  = self.capture.extractor.blink_count
-
-        snap = self.study_context.update(
-            body_engagement=engagement,
-            daisee_class=daisee_class,
-            confidence=confidence,
-            blink_rate=float(blinks),
-            posture_score=posture,
-        )
-
-        col = window.mean(axis=0)
-
+        score, cls, conf = self._infer(window)
+        snapshot = self.study_context.update(score, cls, conf)
         record = ScoreRecord(
-            session_id      = self._session_id,
-            window_start    = window_start,
-            window_end      = window_end,
-            score           = snap.focus_score,
-            daisee_class    = snap.daisee_class,
-            confidence      = snap.confidence,
-            inferred_state  = snap.inferred_state.value,
-            body_engagement = snap.body_engagement,
-            mean_gaze       = float(col[9]),
-            mean_head_yaw   = float(col[0]) * 90.0,
-            mean_ear        = float((col[2] + col[3]) / 2),
-            mean_kpm        = float(col[5]) * 120.0,
-            mean_posture    = float(col[10]),
+            session_id=self._session_id,
+            window_start=window_start,
+            window_end=window_end,
+            score=round(score, 2),
+            body_engagement=snapshot.body_engagement,
+            daisee_class=snapshot.daisee_class,
+            confidence=snapshot.confidence,
         )
 
-        score_id = insert_score(record)
-
-        summary = {
-            "score_id":        score_id,
-            "session_id":      self._session_id,
-            "external_id":     self._external_id,
-            "window_start":    window_start,
-            "window_end":      window_end,
-            "score":           round(snap.focus_score, 2),
-            "daisee_class":    snap.daisee_class,
-            "confidence":      round(snap.confidence, 3),
-            "inferred_state":  snap.inferred_state.value,
-            "body_engagement": round(snap.body_engagement, 2),
-            "mean_gaze":       round(record.mean_gaze, 3),
-            "mean_head_yaw":   round(record.mean_head_yaw, 1),
-            "mean_ear":        round(record.mean_ear, 3),
-            "mean_kpm":        round(record.mean_kpm, 1),
-            "mean_posture":    round(record.mean_posture, 3),
-        }
+        insert_score(
+            session_id=self._session_id,
+            window_start=window_start,
+            window_end=window_end,
+            score=record.score,
+        )
 
         with self._lock:
-            self._recent_scores.append(summary)
+            self._recent_scores.append(record.score)
 
         fmt = lambda ts: datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")
         print(
-            f"[InferenceEngine] score={snap.focus_score:.1f} "
-            f"state={snap.inferred_state.value} "
+            f"[InferenceEngine] score={record.score:.1f} "
             f"window=[{fmt(window_start)} → {fmt(window_end)}]"
         )
 
         for cb in self._callbacks:
             try:
-                cb(record, snap)
+                cb(record, snapshot)
             except Exception as e:
                 print(f"[InferenceEngine] Callback error: {e}")
 
@@ -377,6 +308,4 @@ class InferenceEngine:
         return score, cls, conf
 
 
-# ── Module-level singleton ────────────────────────────────────────────────────
-# Import and use directly, or let api/server.py manage it.
 engine = InferenceEngine()
