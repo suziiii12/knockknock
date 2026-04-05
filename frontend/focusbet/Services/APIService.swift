@@ -311,37 +311,32 @@ actor APIService {
     // MARK: - Session history
 
     func fetchSessionHistory() async throws -> [StudySession] {
-        do {
-            let entries = try await fetch([APISessionHistoryEntry].self, path: "/sessions/history")
-            print("[APIService] fetchSessionHistory: got \(entries.count) entries")
-            return entries.compactMap { entry in
-                guard let endedAt = entry.endedAt,
-                      let startDate = Self.parseDate(entry.startedAt),
-                      let endDate = Self.parseDate(endedAt) else {
-                    print("[APIService] skipping entry \(entry.id): date parse failed (started=\(entry.startedAt) ended=\(entry.endedAt ?? "nil"))")
-                    return nil
-                }
-                let durationMinutes = max(1, Int(endDate.timeIntervalSince(startDate) / 60))
-                let score = Int(entry.finalScore ?? 0)
-                let buildingSlug = Self.buildingIdToSlug[entry.buildingId ?? 0] ?? "unknown"
-                let buildingAbbr = MockData.buildings.first(where: { $0.id == buildingSlug })?.abbreviation ?? buildingSlug.uppercased()
-                return StudySession(
-                    id: String(entry.id),
-                    userId: String(entry.userId),
-                    buildingId: buildingSlug,
-                    buildingName: buildingAbbr,
-                    startTime: startDate,
-                    duration: durationMinutes,
-                    focusScore: score,
-                    sessionScore: score,
-                    screenCapture: score,
-                    motionDetection: score,
-                    isComplete: true
-                )
+        let entries = try await fetch([APISessionHistoryEntry].self, path: "/sessions/history")
+        print("[APIService] fetchSessionHistory: got \(entries.count) entries")
+        return entries.compactMap { entry in
+            guard let endedAt = entry.endedAt,
+                  let startDate = Self.parseDate(entry.startedAt),
+                  let endDate = Self.parseDate(endedAt) else {
+                print("[APIService] skipping entry \(entry.id): date parse failed (started=\(entry.startedAt) ended=\(entry.endedAt ?? "nil"))")
+                return nil
             }
-        } catch {
-            print("[APIService] fetchSessionHistory error: \(error)")
-            return MockData.sessionHistory
+            let durationMinutes = max(1, Int(endDate.timeIntervalSince(startDate) / 60))
+            let score = Int(entry.finalScore ?? 0)
+            let buildingSlug = Self.buildingIdToSlug[entry.buildingId ?? 0] ?? "unknown"
+            let buildingAbbr = MockData.buildings.first(where: { $0.id == buildingSlug })?.abbreviation ?? buildingSlug.uppercased()
+            return StudySession(
+                id: String(entry.id),
+                userId: String(entry.userId),
+                buildingId: buildingSlug,
+                buildingName: buildingAbbr,
+                startTime: startDate,
+                duration: durationMinutes,
+                focusScore: score,
+                sessionScore: score,
+                screenCapture: score,
+                motionDetection: score,
+                isComplete: true
+            )
         }
     }
 

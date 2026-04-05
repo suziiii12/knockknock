@@ -23,9 +23,7 @@ class HistoryViewModel {
             sessions = fetched
         } catch {
             print("[HistoryViewModel] fetchSessionHistory error: \(error.localizedDescription)")
-            if sessions.isEmpty {
-                sessions = MockData.sessionHistory
-            }
+            errorMessage = error.localizedDescription
         }
         isLoading = false
     }

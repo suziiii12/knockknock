@@ -15,18 +15,15 @@ enum Route: Hashable {
 // MARK: - Root view with auth gate
 
 struct ContentView: View {
-    @AppStorage("isLoggedIn") private var isLoggedIn = true  // TODO: revert to false after testing
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
     @AppStorage("isProfileComplete") private var isProfileComplete = false
     @AppStorage("isAdmin") private var isAdmin = false
-    @State private var showWorldID = false
 
     var body: some View {
         Group {
             if isAdmin {
                 AdminDashboardView()
-            } else if !isLoggedIn && !showWorldID {
-                WelcomeView(onSignIn: { showWorldID = true })
-            } else if !isLoggedIn && showWorldID {
+            } else if !isLoggedIn {
                 WorldIDView()
             } else if !isProfileComplete {
                 ProfileSetupView()
