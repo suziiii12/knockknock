@@ -29,7 +29,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe import Image as MPImage
 
-from knockknock.EngagementScoreAI.pipeline.feature_extractor import FeatureExtractor, RawSignals
+from pipeline.feature_extractor import FeatureExtractor, RawSignals
 
 
 @dataclass
