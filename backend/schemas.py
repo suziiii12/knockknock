@@ -39,6 +39,14 @@ class SoloSessionStart(BaseModel):
     building_id: Optional[int] = None
 
 
+class SessionEndRequest(BaseModel):
+    """Optional engagement data from EngagementScoreAI pipeline."""
+    engagement_scores: Optional[list[float]] = None  # per-clip engagement scores (0-100)
+    avg_engagement: Optional[float] = None           # average engagement (0-100)
+    study_pct: Optional[float] = None                # percentage of time studying (0-100)
+    distraction_count: Optional[int] = None          # number of detected distractions
+
+
 class SessionOut(BaseModel):
     id: int
     user_id: int

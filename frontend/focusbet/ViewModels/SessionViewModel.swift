@@ -8,6 +8,12 @@ class SessionViewModel {
     var scores           = FocusScoreData(screenCapture: 0, motionDetection: 0)
     var buildingId       = ""
     var duration         = 0
+    
+    // Optional engagement data from EngagementScoreAI pipeline
+    var engagementScores: [Double]?
+    var avgEngagement: Double?
+    var studyPct: Double?
+    var distractionCount: Int?
 
     private(set) var sessionId: Int?
 
@@ -90,7 +96,12 @@ class SessionViewModel {
             }
             await postFocusLevel(sessionId: sid)
             do {
-                let finalScore = try await APIService.shared.endSession()
+                let finalScore = try await APIService.shared.endSession(
+                    engagementScores: engagementScores,
+                    avgEngagement: avgEngagement,
+                    studyPct: studyPct,
+                    distractionCount: distractionCount
+                )
                 print("[SessionViewModel] Session \(sid) ended — final score: \(finalScore)")
                 NotificationCenter.default.post(name: .sessionDidEnd, object: nil)
             } catch {
@@ -103,6 +114,19 @@ class SessionViewModel {
 
     func updateScores(from data: FocusScoreData) {
         scores = data
+    }
+    
+    /// Set engagement metrics from EngagementScoreAI pipeline before ending session
+    func setEngagementData(
+        scores: [Double]? = nil,
+        avgEngagement: Double? = nil,
+        studyPct: Double? = nil,
+        distractionCount: Int? = nil
+    ) {
+        self.engagementScores = scores
+        self.avgEngagement = avgEngagement
+        self.studyPct = studyPct
+        self.distractionCount = distractionCount
     }
 
     // MARK: - Check-in

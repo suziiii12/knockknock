@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -49,6 +49,12 @@ class Session(Base):
     ended_at    = Column(DateTime, nullable=True)
     duration    = Column(Float, nullable=False)       # minutes
     final_score = Column(Float, nullable=True)
+    
+    # Engagement metrics from EngagementScoreAI pipeline
+    engagement_scores  = Column(JSON, nullable=True)  # list of per-clip engagement scores
+    avg_engagement     = Column(Float, nullable=True) # average engagement (0-100)
+    study_pct          = Column(Float, nullable=True) # % of time actively studying (0-100)
+    distraction_count  = Column(Integer, nullable=True)  # count of detected distractions
 
     user         = relationship("User",       back_populates="sessions")
     building     = relationship("Building",   foreign_keys=[building_id])

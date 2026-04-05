@@ -82,8 +82,14 @@ All endpoints below require Authorization: Bearer <access_token>.
 - Description:
   - Ends current active session of the authenticated user
   - Calculates final_score from mean(level) * 100
+  - Optionally accepts engagement data from EngagementScoreAI pipeline
+  - If engagement data provided, blends with focus-level score (60/40 weighting)
   - Updates weekly_score, building_score, and territory
-- Request body: none
+- Request body (all optional):
+  - engagement_scores: float[] (per-clip engagement scores 0-100)
+  - avg_engagement: float (average engagement 0-100)
+  - study_pct: float (percentage of time studying 0-100)
+  - distraction_count: int (number of detected distractions)
 - Response data:
   - id: int
   - user_id: int
