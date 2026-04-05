@@ -8,7 +8,7 @@ struct StartSessionView: View {
     private let durations = [1, 60, 120, 240] // 1 = 30s test mode
 
     private var building: Building {
-        locationService.detectedBuilding ?? MockData.buildings.first { $0.id == "walc" }!
+        locationService.detectedBuilding ?? MockData.buildings.first { $0.id == "walc" } ?? MockData.buildings[0]
     }
 
     var body: some View {

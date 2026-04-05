@@ -31,7 +31,11 @@ final class CameraPreviewNSView: NSView {
         layer = previewLayer
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        layer = previewLayer
+    }
 
     override func layout() {
         super.layout()

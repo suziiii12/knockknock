@@ -252,15 +252,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+					CODE_SIGN_ENTITLEMENTS = focusbet/focusbet.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X8YXH94FA5;
+				DEVELOPMENT_TEAM = B9DMUDCY2D;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_KEY_NSCameraUsageDescription = "FocusBet uses your camera to track focus during study sessions.";
+					INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "FocusBet uses your location to detect which campus building you're studying in.";
+					INFOPLIST_KEY_NSScreenCaptureUsageDescription = "FocusBet records your screen to analyze cognitive demand with AI.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -289,12 +293,15 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X8YXH94FA5;
+				DEVELOPMENT_TEAM = B9DMUDCY2D;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_KEY_NSCameraUsageDescription = "FocusBet uses your camera to track focus during study sessions.";
+					INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "FocusBet uses your location to detect which campus building you're studying in.";
+					INFOPLIST_KEY_NSScreenCaptureUsageDescription = "FocusBet records your screen to analyze cognitive demand with AI.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

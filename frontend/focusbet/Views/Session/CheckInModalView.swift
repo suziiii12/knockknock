@@ -12,7 +12,7 @@ struct CheckInModalView: View {
         "What are you working on right now?",
         "Rate your current focus level",
         "Are you still engaged with your task?",
-    ].randomElement()!
+    ].randomElement() ?? "What are you working on right now?"
 
     private let options = ["Deep focus", "Moderate focus", "Distracted", "Taking a break"]
 
