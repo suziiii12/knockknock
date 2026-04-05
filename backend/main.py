@@ -31,7 +31,6 @@ from routers import sessions, checkin, buildings, users, admin
 _REQUIRED_ENV_VARS = [
     "SECRET_KEY",
     "ANTHROPIC_API_KEY",
-    "DATABASE_URL",
     "WORLD_ID_APP_ID",
     "WORLD_ID_RP_ID",
 ]
@@ -47,6 +46,11 @@ async def lifespan(app: FastAPI):
             logger.info("Env OK: %s", var)
         else:
             logger.warning("Env MISSING: %s — using default or dev fallback", var)
+
+    if os.getenv("DATABASE_URL"):
+        logger.info("Env OK: DATABASE_URL")
+    else:
+        logger.info("Env MISSING: DATABASE_URL — using local SQLite fallback")
 
     yield
     logger.info("Server shutting down")

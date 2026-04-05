@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
@@ -84,38 +85,35 @@ def admin_building_focus(db: Session = Depends(get_db)):
 @router.get("/hourly-focus")
 def admin_hourly_focus(db: Session = Depends(get_db)):
     """Avg focus score by hour of day (UTC)."""
-    rows = (
-        db.query(
-            func.strftime("%H", models.Session.started_at).label("hour"),
-            func.avg(models.Session.final_score).label("avg_score"),
-            func.count(models.Session.id).label("count"),
-        )
-        .filter(models.Session.final_score.isnot(None))
-        .group_by("hour")
-        .order_by("hour")
-        .all()
-    )
+    rows = db.query(models.Session.started_at, models.Session.final_score).filter(
+        models.Session.final_score.isnot(None),
+        models.Session.started_at.isnot(None),
+    ).all()
+
+    buckets: dict[int, list[float]] = defaultdict(list)
+    for started_at, final_score in rows:
+        buckets[started_at.hour].append(float(final_score))
+
     return success([
-        {"hour": int(r.hour), "avg_score": round(float(r.avg_score), 1), "count": r.count}
-        for r in rows
+        {
+            "hour": hour,
+            "avg_score": round(sum(scores) / len(scores), 1),
+            "count": len(scores),
+        }
+        for hour, scores in sorted(buckets.items())
     ])
 
 
 @router.get("/daily-usage")
 def admin_daily_usage(db: Session = Depends(get_db)):
     """Session count by day of week (Mon → Sun order)."""
-    rows = (
-        db.query(
-            func.strftime("%w", models.Session.started_at).label("dow"),
-            func.count(models.Session.id).label("count"),
-        )
-        .group_by("dow")
-        .order_by("dow")
-        .all()
-    )
-    # SQLite %w: 0 = Sunday … 6 = Saturday
-    _dow = {"1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu", "5": "Fri", "6": "Sat", "0": "Sun"}
-    counts = {_dow[str(r.dow)]: r.count for r in rows if str(r.dow) in _dow}
+    rows = db.query(models.Session.started_at).filter(models.Session.started_at.isnot(None)).all()
+
+    counts = {day: 0 for day in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]}
+    _dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    for (started_at,) in rows:
+        counts[_dow[started_at.weekday()]] += 1
+
     return success([
         {"day": d, "count": counts.get(d, 0)}
         for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -165,17 +163,19 @@ def admin_college_focus(db: Session = Depends(get_db)):
 @router.get("/semester-trend")
 def admin_semester_trend(db: Session = Depends(get_db)):
     """Weekly avg focus score — week number within current year."""
-    rows = (
-        db.query(
-            func.strftime("%W", models.Session.started_at).label("week"),
-            func.avg(models.Session.final_score).label("avg_score"),
-        )
-        .filter(models.Session.final_score.isnot(None))
-        .group_by("week")
-        .order_by("week")
-        .all()
-    )
+    rows = db.query(models.Session.started_at, models.Session.final_score).filter(
+        models.Session.final_score.isnot(None),
+        models.Session.started_at.isnot(None),
+    ).all()
+
+    buckets: dict[int, list[float]] = defaultdict(list)
+    for started_at, final_score in rows:
+        buckets[int(started_at.strftime("%W"))].append(float(final_score))
+
     return success([
-        {"week": int(r.week), "avg_score": round(float(r.avg_score), 1)}
-        for r in rows
+        {
+            "week": week,
+            "avg_score": round(sum(scores) / len(scores), 1),
+        }
+        for week, scores in sorted(buckets.items())
     ])
