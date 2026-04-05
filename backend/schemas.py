@@ -1,7 +1,17 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
-from models import ChallengeStatus
+
+
+# ── User profile ──────────────────────────────────────────────────────────────
+
+class UserProfileUpdate(BaseModel):
+    name:                Optional[str] = None
+    school:              Optional[str] = None
+    major:               Optional[str] = None
+    year:                Optional[str] = None
+    expected_graduation: Optional[str] = None
+    gender:              Optional[str] = None
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -22,62 +32,36 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-# ── Challenges ────────────────────────────────────────────────────────────────
-
-class ChallengeCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=100)
-    duration_minutes: int = Field(..., ge=1, le=180)
-    buy_in_amount: float = Field(..., gt=0)
-    building_id: Optional[int] = None
-    threshold_score: float = Field(70.0, ge=0, le=100)
-
-
-class ChallengeOut(BaseModel):
-    id: int
-    title: str
-    duration_minutes: int
-    buy_in_amount: float
-    building_id: Optional[int]
-    status: ChallengeStatus
-    threshold_score: float
-    pot_total: float
-    participant_count: int
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
 # ── Sessions ──────────────────────────────────────────────────────────────────
 
-class SessionStart(BaseModel):
-    challenge_id: int
-
-
-class SessionScoreUpdate(BaseModel):
-    gaze_score: float = Field(..., ge=0, le=100)
-    tab_score: float = Field(..., ge=0, le=100)
-    checkin_score: float = Field(100.0, ge=0, le=100)
+class SoloSessionStart(BaseModel):
+    duration: float = Field(..., gt=0)          # minutes
+    building_id: Optional[int] = None
 
 
 class SessionOut(BaseModel):
     id: int
-    challenge_id: int
     user_id: int
+    building_id: Optional[int]
     started_at: datetime
     ended_at: Optional[datetime] = None
+    duration: float
     final_score: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
 
-class ScoreOut(BaseModel):
+# ── Focus levels ──────────────────────────────────────────────────────────────
+
+class FocusLevelIn(BaseModel):
+    level: float = Field(..., ge=0.0, le=1.0)   # 0.0 ~ 1.0
+
+
+class FocusLevelOut(BaseModel):
     id: int
     session_id: int
-    gaze_score: float
-    tab_score: float
-    checkin_score: float
-    composite_score: float
-    recorded_at: datetime
+    timestamp: datetime
+    level: float
 
     model_config = {"from_attributes": True}
 
@@ -101,6 +85,7 @@ class CheckInResult(BaseModel):
 class BuildingLeaderboardEntry(BaseModel):
     rank: int
     user_id: int
+    user_name: Optional[str]
     total_score: float
 
     model_config = {"from_attributes": True}

@@ -5,20 +5,20 @@ struct SessionView: View {
     let buildingId: String
     let onNavigate: (Route) -> Void
 
-    @State private var remainingSeconds: Int
-    @State private var scores = FocusScoreData(screenCapture: 85, motionDetection: 85)
-
-    private var focusScore: Int { scores.focusLevel }
-    private var totalSeconds: Int { duration == 1 ? 30 : duration * 60 }
-    @State private var showCheckIn = false
-    @State private var timer: Timer?
-    @State private var scoreTimer: Timer?
-    @State private var checkInTimer: Timer?
+    @State private var vm            = SessionViewModel()
+    @State private var focusTracking = FocusTrackingService()
+    @State private var screenCapture = ScreenCaptureService()
     @State private var cameraService = CameraService()
     @State private var recordingPulse = false
 
+    @State private var remainingSeconds: Int
+    @State private var showCheckIn = false
+    @State private var countdownTimer: Timer?
+    @State private var scoreTimer: Timer?
+    @State private var checkInTimer: Timer?
+
     init(duration: Int, buildingId: String, onNavigate: @escaping (Route) -> Void) {
-        self.duration = duration
+        self.duration   = duration
         self.buildingId = buildingId
         self.onNavigate = onNavigate
         _remainingSeconds = State(initialValue: duration == 1 ? 30 : duration * 60)
@@ -35,6 +35,8 @@ struct SessionView: View {
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
+    private var totalSeconds: Int { duration == 1 ? 30 : duration * 60 }
+
     var body: some View {
         HStack(spacing: 0) {
             // LEFT: Camera (70%)
@@ -48,15 +50,15 @@ struct SessionView: View {
                     // Tracking badge
                     HStack(spacing: 4) {
                         Circle()
-                            .fill(AppColors.accent)
+                            .fill(vm.sessionId != nil ? AppColors.accent : AppColors.warning)
                             .frame(width: 6, height: 6)
-                        Text("Tracking active")
+                        Text(vm.sessionId != nil ? "Tracking active" : "Connecting...")
                             .font(AppFonts.small)
-                            .foregroundStyle(AppColors.accent)
+                            .foregroundStyle(vm.sessionId != nil ? AppColors.accent : AppColors.warning)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(AppColors.accent.opacity(0.1))
+                    .background((vm.sessionId != nil ? AppColors.accent : AppColors.warning).opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     // Screen recording badge
@@ -85,22 +87,15 @@ struct SessionView: View {
                 .padding(.top, 36)
                 .onAppear { recordingPulse = true }
 
-                // Simulated gaze dots
-                ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .fill(AppColors.accent.opacity(0.7))
-                        .frame(width: 8, height: 8)
-                        .position(
-                            x: CGFloat.random(in: 200...500),
-                            y: CGFloat.random(in: 150...350)
-                        )
-                }
-
                 // Check-in modal
                 if showCheckIn {
-                    CheckInModalView(onDismiss: {
-                        withAnimation { showCheckIn = false }
-                    })
+                    CheckInModalView(
+                        sessionId: vm.sessionId,
+                        onDismiss: { passed in
+                            withAnimation { showCheckIn = false }
+                            if passed { vm.postCheckInSnapshot() }
+                        }
+                    )
                     .transition(.move(edge: .bottom))
                     .padding(24)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -115,15 +110,9 @@ struct SessionView: View {
             // RIGHT: Stats (30%)
             ScrollView {
                 VStack(spacing: 24) {
-                    // Focus gauge
-                    FocusGaugeView(score: focusScore)
+                    FocusGaugeView(score: vm.focusScore)
 
-                    // Signal bars
-                    SignalBarsView(
-                        scores: scores,
-                        elapsedSeconds: totalSeconds - remainingSeconds,
-                        totalSeconds: totalSeconds
-                    )
+                    SignalBarsView(scores: vm.scores)
 
                     // Timer
                     VStack(spacing: 4) {
@@ -147,11 +136,11 @@ struct SessionView: View {
                                 .foregroundStyle(AppColors.textPrimary)
                         }
                         HStack {
-                            Text("Current Rank")
+                            Text("Session ID")
                                 .font(AppFonts.caption)
                                 .foregroundStyle(AppColors.textMuted)
                             Spacer()
-                            Text("#3")
+                            Text(vm.sessionId.map { "#\($0)" } ?? "—")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(AppColors.accent)
                         }
@@ -160,7 +149,7 @@ struct SessionView: View {
                                 .font(AppFonts.caption)
                                 .foregroundStyle(AppColors.textMuted)
                             Spacer()
-                            Text("\(FocusScoreData.sessionScore(focusLevel: focusScore, durationMinutes: (totalSeconds - remainingSeconds) / 60))pts")
+                            Text("\(FocusScoreData.sessionScore(focusLevel: vm.focusScore, durationMinutes: (totalSeconds - remainingSeconds) / 60))pts")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(AppColors.accent)
                         }
@@ -180,35 +169,50 @@ struct SessionView: View {
         .onDisappear { stopSession() }
     }
 
+    // MARK: - Session control
+
     private func startSession() {
         cameraService.configure()
         cameraService.start()
 
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+        vm.startSession(
+            duration: duration,
+            buildingId: buildingId,
+            focusTracking: focusTracking,
+            screenCapture: screenCapture
+        )
+
+        // Countdown
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if remainingSeconds > 0 {
                 remainingSeconds -= 1
             } else {
                 stopSession()
-                onNavigate(.result(focusScore: focusScore, buildingId: buildingId, duration: duration))
+                onNavigate(.result(focusScore: vm.focusScore, buildingId: buildingId, duration: duration))
             }
         }
 
+        // Read signals from FocusTrackingService every 5s
         scoreTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
             withAnimation {
-                scores.screenCapture = Int.random(in: 75...95)
-                scores.motionDetection = Int.random(in: 70...92)
+                vm.updateScores(from: focusTracking.currentScores)
             }
         }
 
-        checkInTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+        // Check-in every 5 minutes
+        checkInTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { _ in
             withAnimation { showCheckIn = true }
         }
     }
 
     private func stopSession() {
-        timer?.invalidate()
+        countdownTimer?.invalidate()
         scoreTimer?.invalidate()
         checkInTimer?.invalidate()
+        countdownTimer = nil
+        scoreTimer     = nil
+        checkInTimer   = nil
         cameraService.stop()
+        vm.endSession()
     }
 }

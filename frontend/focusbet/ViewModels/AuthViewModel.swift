@@ -5,6 +5,7 @@ import Security
 
 extension Notification.Name {
     static let authTokenExpired = Notification.Name("com.focusbet.authTokenExpired")
+    static let sessionDidEnd     = Notification.Name("com.focusbet.sessionDidEnd")
 }
 
 // MARK: - Keychain error

@@ -4,6 +4,7 @@ struct StartSessionView: View {
     let onNavigate: (Route) -> Void
     @State private var selectedDuration: Int = 120
     @State private var locationService = LocationService()
+    @State private var kingName: String? = nil
     private let durations = [1, 60, 120, 240] // 1 = 30s test mode
 
     private var building: Building {
@@ -51,7 +52,7 @@ struct StartSessionView: View {
                         .font(AppFonts.heading)
                         .foregroundStyle(AppColors.textPrimary)
 
-                    if let king = building.kingName {
+                    if let king = kingName {
                         HStack(spacing: 4) {
                             Text("\u{1F451}")
                                 .font(.system(size: 12))
@@ -142,6 +143,9 @@ struct StartSessionView: View {
         }
         .onDisappear {
             locationService.stopUpdating()
+        }
+        .task(id: building.id) {
+            kingName = await APIService.shared.fetchBuildingKing(buildingSlug: building.id)
         }
     }
 }

@@ -1,38 +1,40 @@
 import AVFoundation
 
-@Observable
 class CameraService {
     let captureSession = AVCaptureSession()
     private var isConfigured = false
+    // All AVCaptureSession calls must happen on a single serial queue (Apple requirement)
+    private let sessionQueue = DispatchQueue(label: "com.focusbet.camera.session")
 
     func configure() {
-        guard !isConfigured else { return }
-        captureSession.beginConfiguration()
-
-        guard let camera = AVCaptureDevice.default(
-            .builtInWideAngleCamera, for: .video, position: .front
-        ) ?? AVCaptureDevice.default(for: .video),
-        let input = try? AVCaptureDeviceInput(device: camera) else {
-            captureSession.commitConfiguration()
-            return
+        sessionQueue.async { [weak self] in
+            guard let self, !self.isConfigured else { return }
+            self.captureSession.beginConfiguration()
+            let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+                      ?? AVCaptureDevice.default(for: .video)
+            guard let camera,
+                  let input = try? AVCaptureDeviceInput(device: camera),
+                  self.captureSession.canAddInput(input) else {
+                self.captureSession.commitConfiguration()
+                return
+            }
+            self.captureSession.addInput(input)
+            self.captureSession.commitConfiguration()
+            self.isConfigured = true
         }
-
-        if captureSession.canAddInput(input) {
-            captureSession.addInput(input)
-        }
-        captureSession.commitConfiguration()
-        isConfigured = true
     }
 
     func start() {
-        guard !captureSession.isRunning else { return }
-        Task.detached { [weak self] in
-            self?.captureSession.startRunning()
+        sessionQueue.async { [weak self] in
+            guard let self, !self.captureSession.isRunning else { return }
+            self.captureSession.startRunning()
         }
     }
 
     func stop() {
-        guard captureSession.isRunning else { return }
-        captureSession.stopRunning()
+        sessionQueue.async { [weak self] in
+            guard let self, self.captureSession.isRunning else { return }
+            self.captureSession.stopRunning()
+        }
     }
 }

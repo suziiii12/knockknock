@@ -9,6 +9,8 @@ struct ProfileSetupView: View {
     @State private var year = ""
     @State private var expectedGraduation = ""
     @State private var gender = "Prefer not to say"
+    @State private var isSaving = false
+    @State private var saveError: String?
 
     private let years = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate"]
     private let graduationOptions = [
@@ -80,25 +82,31 @@ struct ProfileSetupView: View {
                 }
                 .padding(.horizontal, 40)
 
+                if let error = saveError {
+                    Text(error)
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppColors.danger)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+
                 Button {
-                    // Save to UserDefaults
-                    UserDefaults.standard.set(name.trimmingCharacters(in: .whitespaces), forKey: "userName")
-                    UserDefaults.standard.set(school, forKey: "userSchool")
-                    UserDefaults.standard.set(major, forKey: "userMajor")
-                    UserDefaults.standard.set(year, forKey: "userYear")
-                    UserDefaults.standard.set(expectedGraduation, forKey: "userGraduation")
-                    UserDefaults.standard.set(gender, forKey: "userGender")
-                    isProfileComplete = true
+                    Task { await saveProfile() }
                 } label: {
-                    Text("Complete Setup")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(isFormValid ? .white : AppColors.textMuted)
-                        .frame(width: 280, height: 50)
-                        .background(isFormValid ? AppColors.accent : AppColors.bgTertiary)
-                        .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+                    HStack(spacing: 8) {
+                        if isSaving {
+                            ProgressView().controlSize(.small).tint(.white)
+                        }
+                        Text(isSaving ? "Saving..." : "Complete Setup")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .foregroundStyle(isFormValid ? .white : AppColors.textMuted)
+                    .frame(width: 280, height: 50)
+                    .background(isFormValid ? AppColors.accent : AppColors.bgTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
                 }
                 .buttonStyle(.plain)
-                .disabled(!isFormValid)
+                .disabled(!isFormValid || isSaving)
                 .padding(.bottom, 40)
             }
             .frame(maxWidth: 560)
@@ -106,6 +114,39 @@ struct ProfileSetupView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColors.bgPrimary)
+    }
+
+    // MARK: - Save
+
+    private func saveProfile() async {
+        isSaving  = true
+        saveError = nil
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+
+        // Always persist locally so the nav bar initials work offline
+        UserDefaults.standard.set(trimmedName,        forKey: "userName")
+        UserDefaults.standard.set(school,             forKey: "userSchool")
+        UserDefaults.standard.set(major,              forKey: "userMajor")
+        UserDefaults.standard.set(year,               forKey: "userYear")
+        UserDefaults.standard.set(expectedGraduation, forKey: "userGraduation")
+        UserDefaults.standard.set(gender,             forKey: "userGender")
+
+        do {
+            try await APIService.shared.saveProfile(
+                name:               trimmedName,
+                school:             school,
+                major:              major,
+                year:               year,
+                expectedGraduation: expectedGraduation,
+                gender:             gender
+            )
+        } catch {
+            // Non-fatal: profile saved locally, backend sync failed
+            saveError = "Saved locally. Backend sync failed: \(error.localizedDescription)"
+        }
+
+        isSaving = false
+        isProfileComplete = true
     }
 
     // MARK: - Components

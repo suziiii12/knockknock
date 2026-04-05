@@ -96,10 +96,15 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
-        isAuthorized = status == .authorizedAlways || status == .authorized
+        isAuthorized = status == .authorizedAlways
         if isAuthorized {
             manager.startUpdatingLocation()
             startRegionMonitoring()
+        } else if status == .denied || status == .restricted {
+            isLocating = false
+            if detectedBuilding == nil {
+                detectedBuilding = MockData.buildings.first { $0.id == "walc" }
+            }
         }
     }
 

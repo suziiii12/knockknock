@@ -23,8 +23,7 @@ import models
 import schemas
 from auth import verify_world_id_proof, create_access_token
 from responses import success
-from routers import challenges, sessions, checkin, buildings, users
-from routers.sessions import scheduler as checkin_scheduler
+from routers import sessions, checkin, buildings, users
 
 
 _REQUIRED_ENV_VARS = [
@@ -47,18 +46,14 @@ async def lifespan(app: FastAPI):
         else:
             logger.warning("Env MISSING: %s — using default or dev fallback", var)
 
-    checkin_scheduler.start()
-    logger.info("APScheduler started")
     yield
-    checkin_scheduler.shutdown(wait=False)
-    logger.info("APScheduler stopped")
     logger.info("Server shutting down")
 
 
 app = FastAPI(
     title="FocusBet API",
-    description="Backend for FocusBet — stake money on your focus sessions.",
-    version="0.1.0",
+    description="Backend for FocusBet — AI-powered focus session tracker.",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -92,7 +87,6 @@ async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse({"success": False, "error": "Internal server error"}, status_code=500)
 
 
-app.include_router(challenges.router)
 app.include_router(sessions.router)
 app.include_router(checkin.router)
 app.include_router(buildings.router)
@@ -109,7 +103,6 @@ async def verify_world_id(
     body: schemas.WorldIDProof,
     db: Session = Depends(get_db),
 ):
-    """Verify a World ID proof and return a 24h JWT. One account per person."""
     nullifier_hash = await verify_world_id_proof(body.model_dump())
     if not nullifier_hash:
         raise HTTPException(
@@ -128,8 +121,6 @@ async def verify_world_id(
         logger.info("New user registered: id=%d", user.id)
 
     token = create_access_token(user.id)
-
-    # Persist latest JWT so the client can re-hydrate after restart
     user.jwt_token = token
     db.commit()
     db.refresh(user)

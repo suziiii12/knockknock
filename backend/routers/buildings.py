@@ -33,8 +33,16 @@ def get_building_leaderboard(
         .all()
     )
 
+    user_ids = [row.user_id for row in rows]
+    users = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(user_ids)).all()}
+
     leaderboard = [
-        schemas.BuildingLeaderboardEntry(rank=idx + 1, user_id=row.user_id, total_score=row.total_score).model_dump()
+        schemas.BuildingLeaderboardEntry(
+            rank=idx + 1,
+            user_id=row.user_id,
+            user_name=users[row.user_id].name if row.user_id in users else None,
+            total_score=row.total_score,
+        ).model_dump()
         for idx, row in enumerate(rows)
     ]
     return success(leaderboard)

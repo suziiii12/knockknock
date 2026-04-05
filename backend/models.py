@@ -13,6 +13,14 @@ class User(Base):
     jwt_token               = Column(String, nullable=True)
     created_at              = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Profile fields (set on first login via ProfileSetupView)
+    name                = Column(String,  nullable=True)
+    school              = Column(String,  nullable=True)
+    major               = Column(String,  nullable=True)
+    year                = Column(String,  nullable=True)   # Freshman / Sophomore / …
+    expected_graduation = Column(String,  nullable=True)   # e.g. "Spring 2026"
+    gender              = Column(String,  nullable=True)
+
     sessions      = relationship("Session",     back_populates="user")
     weekly_scores = relationship("WeeklyScore", back_populates="user")
     territory     = relationship("Territory",   back_populates="user")
@@ -21,9 +29,11 @@ class User(Base):
 class Building(Base):
     __tablename__ = "buildings"
 
-    id       = Column(Integer, primary_key=True, index=True)
-    name     = Column(String, unique=True, nullable=False)
-    location = Column(String, nullable=False)
+    id        = Column(Integer, primary_key=True, index=True)
+    name      = Column(String, unique=True, nullable=False)
+    location  = Column(String, nullable=False)
+    latitude  = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     building_scores = relationship("BuildingScore", back_populates="building")
     territory       = relationship("Territory",     back_populates="building")
@@ -33,13 +43,15 @@ class Session(Base):
     __tablename__ = "sessions"
 
     id          = Column(Integer, primary_key=True, index=True)
-    user_id     = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id     = Column(Integer, ForeignKey("users.id"),     nullable=False)
+    building_id = Column(Integer, ForeignKey("buildings.id"), nullable=True)
     started_at  = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     ended_at    = Column(DateTime, nullable=True)
     duration    = Column(Float, nullable=False)       # minutes
     final_score = Column(Float, nullable=True)
 
     user         = relationship("User",       back_populates="sessions")
+    building     = relationship("Building",   foreign_keys=[building_id])
     focus_levels = relationship("FocusLevel", back_populates="session")
 
 

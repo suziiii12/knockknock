@@ -5,7 +5,7 @@ import Foundation
 struct UserProfile {
     let id: Int
     let sessionCount: Int
-    let totalMinutes: Int
+    let totalMinutes: Double
     let avgFocusScore: Double
     let totalScore: Double
     let kingBuildingIds: [Int]
@@ -13,7 +13,6 @@ struct UserProfile {
 
 struct SessionStartResult {
     let sessionId: Int
-    let challengeId: Int
 }
 
 struct CheckInAPIResult {
@@ -124,6 +123,18 @@ actor APIService {
         return MockData.buildings
     }
 
+    // MARK: - Building king
+
+    /// Returns the name of the top-ranked user for a building, or nil if no data.
+    func fetchBuildingKing(buildingSlug: String) async -> String? {
+        guard let backendId = Self.buildingSlugToId[buildingSlug] else { return nil }
+        guard let entries = try? await fetch(
+            [APILeaderboardEntry].self,
+            path: "/buildings/\(backendId)/leaderboard"
+        ), let top = entries.first else { return nil }
+        return top.userName ?? "User #\(top.userId)"
+    }
+
     // MARK: - Territory / Leaderboard
 
     /// Fetches real territory rankings from the backend and maps them to TerritoryEntry.
@@ -139,11 +150,15 @@ actor APIService {
         return entries.map { entry in
             // Map integer userId → display strings where possible
             let colorIdx = (entry.rank - 1) % AppColors.userColors.count
+            let displayName = entry.userName ?? "User #\(entry.userId)"
+            let initials = entry.userName.map { name in
+                name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init).joined().uppercased()
+            } ?? "#\(entry.userId)"
             return TerritoryEntry(
                 id: "t\(entry.rank)",
                 userId: String(entry.userId),
-                userName: "User #\(entry.userId)",
-                userInitials: "#\(entry.userId)",
+                userName: displayName,
+                userInitials: initials,
                 colorIndex: colorIdx,
                 score: Int(entry.totalScore),
                 ownershipPercent: 0,          // computed below
@@ -169,9 +184,23 @@ actor APIService {
     // Matches the rows inserted by backend/seed.py (WALC=1, Hicks=2, HAAS=3).
     // Extend this map as more buildings are seeded.
     private static let buildingSlugToId: [String: Int] = [
-        "walc":   1,
-        "hicks":  2,
-        "haas":   3,
+        "walc":     1,
+        "hicks":    2,
+        "haas":     3,
+        "lawson":   7,
+        "knoy":     8,
+        "pmu":      9,
+        "hovde":   10,
+        "corec":   11,
+        "lilly":   12,
+        "krach":   13,
+        "heavilon": 14,
+        "stanley": 15,
+        "rec":     16,
+        "krannert": 17,
+        "stewart": 18,
+        "ee":      19,
+        "arms":    20,
     ]
 
     private static let buildingIdToSlug: [Int: String] = Dictionary(
@@ -179,6 +208,24 @@ actor APIService {
     )
 
     // MARK: - User profile
+
+    func saveProfile(
+        name: String,
+        school: String,
+        major: String,
+        year: String,
+        expectedGraduation: String,
+        gender: String
+    ) async throws {
+        var body: [String: Any] = [:]
+        if !name.isEmpty               { body["name"]                = name }
+        if !school.isEmpty             { body["school"]              = school }
+        if !major.isEmpty              { body["major"]               = major }
+        if !year.isEmpty               { body["year"]                = year }
+        if !expectedGraduation.isEmpty { body["expected_graduation"] = expectedGraduation }
+        if !gender.isEmpty             { body["gender"]              = gender }
+        _ = try await fetch(APIProfileOut.self, path: "/users/me/profile", method: "PATCH", body: body)
+    }
 
     func fetchUserProfile() async throws -> UserProfile {
         let raw = try await fetch(APIUserMe.self, path: "/users/me")
@@ -190,6 +237,13 @@ actor APIService {
             totalScore: raw.totalScore,
             kingBuildingIds: raw.kingBuildingIds
         )
+    }
+
+    /// Returns the current user's weekly score for this week.
+    /// Falls back to 0 if the user has no score yet this week.
+    func fetchWeeklyScore() async throws -> Int {
+        let raw = try await fetch(APIWeeklyScoreOut.self, path: "/users/me/weekly-score")
+        return Int(raw.weeklyScore.rounded())
     }
 
     // MARK: - Session history
@@ -231,30 +285,27 @@ actor APIService {
 
     // MARK: - Sessions
 
-    func startSession(challengeId: Int) async throws -> SessionStartResult {
-        let raw = try await fetch(
-            APISessionOut.self,
-            path: "/sessions/start",
-            method: "POST",
-            body: ["challenge_id": challengeId]
-        )
-        return SessionStartResult(sessionId: raw.id, challengeId: raw.challengeId)
+    /// Starts a new solo session. Returns the backend session ID.
+    func startSoloSession(durationMinutes: Int, buildingSlug: String?) async throws -> Int {
+        var body: [String: Any] = ["duration": Double(durationMinutes)]
+        if let slug = buildingSlug, let bid = Self.buildingSlugToId[slug] {
+            body["building_id"] = bid
+        }
+        let raw = try await fetch(APISessionOut.self, path: "/sessions/start", method: "POST", body: body)
+        return raw.id
     }
 
-    func postScore(sessionId: Int, gazeScore: Double, tabScore: Double, checkinScore: Double) async throws {
+    /// Posts a focus level snapshot (0.0–1.0) for an active session.
+    func postFocusLevel(sessionId: Int, level: Double) async throws {
         _ = try await fetch(
-            APIScoreOut.self,
-            path: "/sessions/\(sessionId)/score",
+            APIFocusLevelOut.self,
+            path: "/sessions/\(sessionId)/focus-level",
             method: "POST",
-            body: [
-                "gaze_score":    gazeScore,
-                "tab_score":     tabScore,
-                "checkin_score": checkinScore,
-            ]
+            body: ["level": max(0.0, min(1.0, level))]
         )
     }
 
-    /// Ends the current user's active session. Returns the final composite score.
+    /// Ends the current user's active session. Returns the final score (0–100).
     func endSession() async throws -> Double {
         let raw = try await fetch(APISessionOut.self, path: "/sessions/end", method: "POST")
         return raw.finalScore ?? 0.0
@@ -346,34 +397,42 @@ private struct ServerErrorBody: Decodable {
 private struct APILeaderboardEntry: Decodable {
     let rank: Int
     let userId: Int
+    let userName: String?
     let totalScore: Double
     enum CodingKeys: String, CodingKey {
         case rank
         case userId      = "user_id"
+        case userName    = "user_name"
         case totalScore  = "total_score"
     }
 }
 
 private struct APISessionOut: Decodable {
     let id: Int
-    let challengeId: Int
     let userId: Int
+    let buildingId: Int?
     let startedAt: String
     let endedAt: String?
+    let duration: Double
     let finalScore: Double?
     enum CodingKeys: String, CodingKey {
-        case id, startedAt = "started_at", endedAt = "ended_at", finalScore = "final_score"
-        case challengeId = "challenge_id"
-        case userId      = "user_id"
+        case id, duration
+        case userId     = "user_id"
+        case buildingId = "building_id"
+        case startedAt  = "started_at"
+        case endedAt    = "ended_at"
+        case finalScore = "final_score"
     }
 }
 
-private struct APIScoreOut: Decodable {
+private struct APIFocusLevelOut: Decodable {
     let id: Int
-    let compositeScore: Double
+    let sessionId: Int
+    let level: Double
+    let timestamp: String
     enum CodingKeys: String, CodingKey {
-        case id
-        case compositeScore = "composite_score"
+        case id, level, timestamp
+        case sessionId = "session_id"
     }
 }
 
@@ -404,13 +463,28 @@ private struct APISessionHistoryEntry: Decodable {
     }
 }
 
+private struct APIProfileOut: Decodable {
+    let id: Int
+    let name: String?
+    let school: String?
+    let major: String?
+    let year: String?
+    let expectedGraduation: String?
+    let gender: String?
+    enum CodingKeys: String, CodingKey {
+        case id, name, school, major, year, gender
+        case expectedGraduation = "expected_graduation"
+    }
+}
+
 private struct APIUserMe: Decodable {
     let id: Int
     let nullifierHash: String
     let sessionCount: Int
-    let totalMinutes: Int
+    let totalMinutes: Double
     let avgFocusScore: Double
     let totalScore: Double
+    let weeklyScore: Double
     let kingBuildingIds: [Int]
     let createdAt: String?
     enum CodingKeys: String, CodingKey {
@@ -420,6 +494,17 @@ private struct APIUserMe: Decodable {
         case totalMinutes    = "total_minutes"
         case avgFocusScore   = "avg_focus_score"
         case totalScore      = "total_score"
+        case weeklyScore     = "weekly_score"
         case kingBuildingIds = "king_building_ids"
+    }
+}
+
+private struct APIWeeklyScoreOut: Decodable {
+    let month: Int
+    let week: Int
+    let weeklyScore: Double
+    enum CodingKeys: String, CodingKey {
+        case month, week
+        case weeklyScore = "weekly_score"
     }
 }

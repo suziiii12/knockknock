@@ -4,6 +4,8 @@ struct NavigationBar: View {
     @Binding var activeTab: String
     let onNavigate: (Route) -> Void
 
+    @State private var weeklyScore: Int = 0
+
     private let tabs: [(label: String, id: String, route: Route)] = [
         ("Focus", "focus", .home),
         ("History", "history", .history),
@@ -56,7 +58,7 @@ struct NavigationBar: View {
 
             // Score badge + Avatar
             HStack(spacing: 12) {
-                ScoreBadge(score: MockData.currentUser.totalScore)
+                ScoreBadge(score: weeklyScore)
                 UserAvatar(initials: navInitials, colorIndex: MockData.currentUser.colorIndex, size: 32)
             }
             .padding(.trailing, 24)
@@ -65,6 +67,18 @@ struct NavigationBar: View {
         .background(AppColors.bgSecondary)
         .overlay(alignment: .bottom) {
             AppColors.border.frame(height: 1)
+        }
+        .task { await refreshScore() }
+        .onReceive(NotificationCenter.default.publisher(for: .sessionDidEnd)) { _ in
+            Task { await refreshScore() }
+        }
+    }
+
+    private func refreshScore() async {
+        do {
+            weeklyScore = try await APIService.shared.fetchWeeklyScore()
+        } catch {
+            // Keep current value on error
         }
     }
 }
