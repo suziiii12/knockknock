@@ -99,6 +99,7 @@ class SessionViewModel {
     }
 
     func endSession() {
+        guard isActive else { return }  // prevent double-call from timer + onDisappear
         isActive = false
         focusPostingTask?.cancel()
         focusPostingTask = nil
