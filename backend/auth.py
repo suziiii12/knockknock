@@ -30,35 +30,38 @@ def _is_dev_mode() -> bool:
 
 
 async def verify_world_id_proof(proof_payload: dict) -> Optional[str]:
-    """Verify a World ID v4 proof. Returns nullifier_hash on success, None on failure.
+    """Verify a World ID proof by forwarding the IDKit result payload as-is
+    to POST /v4/verify/{rp_id}.
 
-    In dev mode (WORLD_ID_APP_ID unset or 'dev'), nullifier_hash values starting
-    with 'test_' bypass verification entirely. All other hashes also bypass in
-    dev mode (no real World ID API call is made).
+    Returns nullifier_hash on success, None on failure.
+    Dev/test bypasses are only active when DEV_MODE is true.
     """
     nullifier_hash = proof_payload.get("nullifier_hash", "")
 
-    if nullifier_hash.startswith("test_"):
-        logger.warning("Test bypass: nullifier_hash '%s', skipping World ID verification", nullifier_hash)
-        return nullifier_hash
-
     if _is_dev_mode():
-        logger.warning("Dev mode: WORLD_ID_APP_ID not set or 'dev', skipping World ID verification")
+        if nullifier_hash.startswith("test_"):
+            logger.warning("Dev bypass: test nullifier '%s'", nullifier_hash)
+            return nullifier_hash
+        logger.warning("Dev mode: skipping World ID verification")
         return nullifier_hash or None
 
-    url = f"{WORLD_ID_VERIFY_URL}/{WORLD_ID_APP_ID}"
+    if not WORLD_ID_RP_ID:
+        logger.error("WORLD_ID_RP_ID not configured; cannot verify proof")
+        return None
+
+    url = f"{WORLD_ID_VERIFY_URL}/{WORLD_ID_RP_ID}"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(url, json=proof_payload, timeout=10)
         if resp.status_code == 200:
             data = resp.json()
-            nullifier_hash = data.get("nullifier_hash")
-            logger.info("World ID v4 proof verified, nullifier=%s", nullifier_hash)
+            nullifier_hash = data.get("nullifier_hash") or data.get("nullifier")
+            logger.info("World ID proof verified, nullifier=%s", nullifier_hash)
             return nullifier_hash
-        logger.warning("World ID v4 verification failed: %s %s", resp.status_code, resp.text)
+        logger.warning("World ID verification failed: %s %s", resp.status_code, resp.text)
         return None
     except Exception as exc:
-        logger.error("World ID v4 verification error: %s", exc)
+        logger.error("World ID verification error: %s", exc)
         return None
 
 

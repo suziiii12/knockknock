@@ -8,3 +8,4 @@ anthropic
 apscheduler
 websockets
 httpx
+eth-account

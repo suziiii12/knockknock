@@ -10,6 +10,7 @@ class User(Base):
 
     id                      = Column(Integer, primary_key=True, index=True)
     world_id_nullifier_hash = Column(String, unique=True, nullable=False, index=True)
+    selfie_nullifier        = Column(String, nullable=True, index=True)
     jwt_token               = Column(String, nullable=True)
     created_at              = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

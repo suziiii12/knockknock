@@ -1,6 +1,7 @@
 import logging
 import os
 import secrets
+import struct
 import time
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from dotenv import load_dotenv
+from eth_account import Account
+from eth_account.messages import encode_defunct
+from eth_hash.auto import keccak
 
 load_dotenv()
 
@@ -23,7 +27,7 @@ logger = logging.getLogger(__name__)
 from database import engine, get_db
 import models
 import schemas
-from auth import verify_world_id_proof, create_access_token
+from auth import verify_world_id_proof, create_access_token, get_current_user
 from responses import success
 from routers import sessions, checkin, buildings, users, admin
 
@@ -41,6 +45,16 @@ _REQUIRED_ENV_VARS = [
 async def lifespan(app: FastAPI):
     models.Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
+
+    # Migrate existing DBs: add selfie_nullifier column if missing
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    if "users" in insp.get_table_names():
+        cols = [c["name"] for c in insp.get_columns("users")]
+        if "selfie_nullifier" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN selfie_nullifier VARCHAR"))
+            logger.info("Migrated: added selfie_nullifier column to users")
 
     for var in _REQUIRED_ENV_VARS:
         if os.getenv(var):
@@ -208,32 +222,74 @@ def dev_get_all_sessions(db: Session = Depends(get_db)):
     ]
 
 
-@app.get("/auth/create-session")
-async def create_session():
-    """Return rpContext data for IDKit v2 World ID flow.
+def _hash_to_field(data: bytes) -> bytes:
+    """Keccak-256 then shift right 8 bits so the result fits in a BN254 field element."""
+    h = keccak(data)
+    n = int.from_bytes(h, "big") >> 8
+    return n.to_bytes(32, "big")
 
-    In dev mode (WORLD_ID_APP_ID unset / 'dev'), signature is empty and
-    the frontend falls back to the test_ stub. In production, set
-    WORLD_ID_PRIVATE_KEY (PEM, ECDSA P-256 from the Worldcoin Developer Portal)
-    to produce a real signature.
+
+def _sign_rp_request(signing_key_hex: str, action: str | None = None, ttl: int = 300) -> dict:
+    """World ID 4.0 RP signature: secp256k1 + EIP-191 per docs.world.org/world-id/idkit/signatures"""
+    key_bytes = bytes.fromhex(signing_key_hex.removeprefix("0x"))
+
+    nonce_bytes = _hash_to_field(secrets.token_bytes(32))
+    created_at = int(time.time())
+    expires_at = created_at + ttl
+
+    if action:
+        msg = bytearray(81)
+        msg[0:1] = b"\x01"
+        msg[1:33] = nonce_bytes
+        msg[33:41] = struct.pack(">Q", created_at)
+        msg[41:49] = struct.pack(">Q", expires_at)
+        msg[49:81] = _hash_to_field(action.encode("utf-8"))
+    else:
+        msg = bytearray(49)
+        msg[0:1] = b"\x01"
+        msg[1:33] = nonce_bytes
+        msg[33:41] = struct.pack(">Q", created_at)
+        msg[41:49] = struct.pack(">Q", expires_at)
+
+    signable = encode_defunct(primitive=bytes(msg))
+    signed = Account.sign_message(signable, private_key=key_bytes)
+
+    sig_hex = signed.signature.hex()
+    if not sig_hex.startswith("0x"):
+        sig_hex = "0x" + sig_hex
+
+    return {
+        "sig": sig_hex,
+        "nonce": "0x" + nonce_bytes.hex(),
+        "created_at": created_at,
+        "expires_at": expires_at,
+    }
+
+
+@app.get("/auth/create-session")
+async def create_session(action: str | None = None):
+    """Return rpContext data for IDKit v2+ World ID flow.
+
+    Uses secp256k1 + EIP-191 signing per World ID 4.0 spec.
+    Pass ?action=focus_session (or session_verify for selfie) to bind the
+    signature to a specific action.
     """
     app_id = os.getenv("WORLD_ID_APP_ID", "dev")
     rp_id  = os.getenv("WORLD_ID_RP_ID", "focusbet")
-    nonce      = secrets.token_hex(16)
-    created_at = int(time.time())
-    expires_at = created_at + 600  # 10 minutes
 
-    private_key_pem = os.getenv("WORLD_ID_PRIVATE_KEY", "")
+    signing_key = os.getenv("WORLD_ID_PRIVATE_KEY", "")
     signature = ""
-    if private_key_pem:
+    nonce = "0x" + secrets.token_hex(32)
+    created_at = int(time.time())
+    expires_at = created_at + 600
+
+    if signing_key:
         try:
-            from cryptography.hazmat.primitives import hashes, serialization
-            from cryptography.hazmat.primitives.asymmetric import ec
-            import base64
-            message = f"{nonce}:{created_at}:{expires_at}".encode()
-            key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
-            sig = key.sign(message, ec.ECDSA(hashes.SHA256()))
-            signature = base64.b64encode(sig).decode()
+            result = _sign_rp_request(signing_key, action=action)
+            signature  = result["sig"]
+            nonce      = result["nonce"]
+            created_at = result["created_at"]
+            expires_at = result["expires_at"]
         except Exception as exc:
             logger.warning("rpContext signing failed: %s", exc)
 
@@ -249,10 +305,13 @@ async def create_session():
 
 @app.post("/auth/verify-world-id")
 async def verify_world_id(
-    body: schemas.WorldIDProof,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    nullifier_hash = await verify_world_id_proof(body.model_dump())
+    """Verify a World ID proof. Accepts IDKit result payload as-is and forwards
+    it to the World Developer API for verification."""
+    body = await request.json()
+    nullifier_hash = await verify_world_id_proof(body)
     if not nullifier_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -275,3 +334,40 @@ async def verify_world_id(
     db.refresh(user)
 
     return success(schemas.TokenResponse(access_token=token).model_dump())
+
+
+@app.post("/auth/verify-selfie")
+async def verify_selfie(
+    request: Request,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verify a World ID Selfie Check proof for session-start continuity.
+
+    On first call: enrolls the selfie nullifier on the user record.
+    On subsequent calls: verifies the nullifier matches the enrolled one.
+    """
+    body = await request.json()
+    nullifier_hash = await verify_world_id_proof(body)
+    if not nullifier_hash:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Selfie verification failed",
+        )
+
+    if not user.selfie_nullifier:
+        user.selfie_nullifier = nullifier_hash
+        db.commit()
+        logger.info("Selfie enrolled for user %d", user.id)
+        return success({"status": "enrolled", "verified": True})
+
+    if user.selfie_nullifier != nullifier_hash:
+        logger.warning("Selfie mismatch for user %d: stored=%s got=%s",
+                        user.id, user.selfie_nullifier, nullifier_hash)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Selfie does not match enrolled identity",
+        )
+
+    logger.info("Selfie verified for user %d", user.id)
+    return success({"status": "verified", "verified": True})

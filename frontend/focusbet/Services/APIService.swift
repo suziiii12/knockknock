@@ -65,6 +65,7 @@ actor APIService {
 
     func setToken(_ token: String) { authToken = token }
     func clearToken()              { authToken = nil }
+    var currentToken: String?      { authToken }
 
     /// DEV ONLY — creates/fetches the test user and sets the auth token automatically.
     /// Call once on app launch during development to skip World ID auth.
