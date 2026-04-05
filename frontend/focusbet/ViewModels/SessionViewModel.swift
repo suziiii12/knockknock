@@ -4,20 +4,14 @@ import Foundation
 @MainActor
 class SessionViewModel {
     var isActive         = false
-    var remainingSeconds: Int = 0
-    var focusScore:      Int = 0
-    var scores           = FocusScoreData(gaze: 0, posture: 0, blink: 0, keyMouse: 0, tabs: 0, checkIn: 0)
-    var buildingId:      String = ""
-    var duration:        Int = 0
+    var remainingSeconds = 0
+    var scores           = FocusScoreData(screenCapture: 0, motionDetection: 0)
+    var buildingId       = ""
+    var duration         = 0
 
-    // Set this before calling startSession() to enable real backend session tracking.
-    // When nil the session runs locally with simulated scores only.
-    var challengeId: Int?
-
-    // Backend-assigned session ID; populated after a successful startSession API call.
     private(set) var sessionId: Int?
 
-    private var scorePostingTask: Task<Void, Never>?
+    private var focusPostingTask: Task<Void, Never>?
     private var screenCaptureService: ScreenCaptureService?
     private var focusTrackingService: FocusTrackingService?
 
@@ -30,12 +24,10 @@ class SessionViewModel {
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
-    var buildingScore: Int {
-        FocusScoreData.buildingScore(
-            focusScore: focusScore,
-            durationMinutes: duration,
-            daysStudiedThisWeek: 5
-        )
+    var focusScore: Int { scores.focusLevel }
+
+    var sessionScore: Int {
+        FocusScoreData.sessionScore(focusLevel: scores.focusLevel, durationMinutes: duration)
     }
 
     // MARK: - Session lifecycle
@@ -46,96 +38,88 @@ class SessionViewModel {
         focusTracking: FocusTrackingService,
         screenCapture: ScreenCaptureService
     ) {
-        self.duration         = duration
-        self.buildingId       = buildingId
-        self.remainingSeconds = duration * 60
-        self.isActive         = true
-        self.focusScore       = 85
+        self.duration             = duration
+        self.buildingId           = buildingId
+        self.remainingSeconds     = duration * 60
+        self.isActive             = true
+        self.scores               = FocusScoreData(screenCapture: 85, motionDetection: 85)
         self.focusTrackingService = focusTracking
         self.screenCaptureService = screenCapture
 
-        // Request all permissions, then start monitoring.
         Task {
             await PermissionService.shared.requestAllPermissions()
             screenCapture.startMonitoring(focusTrackingService: focusTracking)
+            focusTracking.startTracking()
         }
 
-        // If a challenge is linked, start a backend session and begin score posting.
-        if let cid = challengeId {
-            Task {
-                do {
-                    let result = try await APIService.shared.startSession(challengeId: cid)
-                    self.sessionId = result.sessionId
-                    startPeriodicScorePosting()
-                } catch {
-                    // Backend unavailable — session continues locally
-                    print("[SessionViewModel] startSession API error: \(error.localizedDescription)")
-                }
+        Task {
+            do {
+                let sid = try await APIService.shared.startSoloSession(
+                    durationMinutes: duration,
+                    buildingSlug: buildingId
+                )
+                sessionId = sid
+                startPeriodicFocusPosting()
+                print("[SessionViewModel] Session started: id=\(sid)")
+            } catch {
+                print("[SessionViewModel] startSoloSession error: \(error.localizedDescription)")
             }
         }
     }
 
     func endSession() {
         isActive = false
-        scorePostingTask?.cancel()
-        scorePostingTask = nil
+        focusPostingTask?.cancel()
+        focusPostingTask = nil
         screenCaptureService?.stopMonitoring()
-        screenCaptureService  = nil
-        focusTrackingService  = nil
+        focusTrackingService?.stopTracking()
+        screenCaptureService = nil
+        focusTrackingService = nil
 
         guard let sid = sessionId else { return }
         Task {
+            await postFocusLevel(sessionId: sid)
             do {
                 let finalScore = try await APIService.shared.endSession()
                 print("[SessionViewModel] Session \(sid) ended — final score: \(finalScore)")
+                NotificationCenter.default.post(name: .sessionDidEnd, object: nil)
             } catch {
-                print("[SessionViewModel] endSession API error: \(error.localizedDescription)")
+                print("[SessionViewModel] endSession error: \(error.localizedDescription)")
             }
         }
     }
 
-    // MARK: - Composite score
+    // MARK: - Score updates (called by SessionView timer)
 
-    /// Weighted composite: 50% gaze (AI team), 30% tab activity, 20% check-in.
-    func updateCompositeScore(from data: FocusScoreData) {
-        let composite = Int(
-            0.5 * Double(data.gaze)    +
-            0.3 * Double(data.tabs)    +
-            0.2 * Double(data.checkIn)
-        )
-        scores     = data
-        focusScore = min(100, max(0, composite))
+    func updateScores(from data: FocusScoreData) {
+        scores = data
     }
 
-    // MARK: - Score posting
+    // MARK: - Check-in
 
-    /// Submits the current focus scores to the backend every 30 seconds.
-    private func startPeriodicScorePosting() {
-        scorePostingTask = Task { [weak self] in
+    func postCheckInSnapshot() {
+        guard let sid = sessionId else { return }
+        Task { await postFocusLevel(sessionId: sid) }
+    }
+
+    // MARK: - Private
+
+    private func startPeriodicFocusPosting() {
+        focusPostingTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(30))
                 guard let self, !Task.isCancelled, let sid = self.sessionId else { break }
-                await self.postCurrentScore(sessionId: sid)
+                await self.postFocusLevel(sessionId: sid)
             }
         }
     }
 
-    private func postCurrentScore(sessionId: Int) async {
+    private func postFocusLevel(sessionId: Int) async {
+        let level = Double(scores.focusLevel) / 100.0
         do {
-            try await APIService.shared.postScore(
-                sessionId:    sessionId,
-                gazeScore:    Double(scores.gaze),
-                tabScore:     Double(scores.tabs),
-                checkinScore: Double(scores.checkIn)
-            )
+            try await APIService.shared.postFocusLevel(sessionId: sessionId, level: level)
         } catch {
-            print("[SessionViewModel] postScore error: \(error.localizedDescription)")
+            print("[SessionViewModel] postFocusLevel error: \(error.localizedDescription)")
         }
-    }
-
-    /// Call this after a check-in is answered to post an immediate score snapshot.
-    func postCheckInScore() {
-        guard let sid = sessionId else { return }
-        Task { await postCurrentScore(sessionId: sid) }
     }
 }

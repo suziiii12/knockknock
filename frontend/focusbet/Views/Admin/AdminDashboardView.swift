@@ -122,7 +122,7 @@ struct AdminDashboardView: View {
                         .foregroundStyle(AppColors.textSecondary)
                     Text(change)
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(positive == true ? AppColors.accentLight : AppColors.textMuted)
+                        .foregroundStyle(positive == true ? AppColors.accent : AppColors.textMuted)
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,13 +133,12 @@ struct AdminDashboardView: View {
         }
     }
 
-    // MARK: - Tab Selector
+    // MARK: - Tab Selector (2 tabs only)
 
     private var tabSelector: some View {
         HStack(spacing: 0) {
             tabBtn("Study Spaces", 0)
-            tabBtn("Program Effectiveness", 1)
-            tabBtn("Retention Signals", 2)
+            tabBtn("Retention Signals", 1)
             Spacer()
         }
     }
@@ -165,7 +164,6 @@ struct AdminDashboardView: View {
     private var tabContent: some View {
         switch selectedTab {
         case 0: studySpacesTab
-        case 1: programEffectivenessTab
         default: retentionSignalsTab
         }
     }
@@ -174,21 +172,18 @@ struct AdminDashboardView: View {
 
     private var studySpacesTab: some View {
         let buildingFocus: [(String, Int)] = [
-            ("HSSE 3rd Floor", 82), ("WALC Basement", 79), ("Hicks 2nd Floor", 76),
-            ("WALC 1st Floor", 71), ("PMU Study Room", 68), ("Krach Atrium", 64),
-            ("WALC Main Floor", 58), ("Hicks Main", 55),
+            ("WALC", 79), ("HIKS", 76), ("LWSN", 74),
+            ("KNOY", 72), ("PMU", 68), ("KRCH", 64),
+            ("HOVD", 62), ("STEW", 60), ("COREC", 58),
         ]
         let hourlyFocus: [(Int, Int)] = [
             (8, 62), (9, 68), (10, 74), (11, 78), (12, 65), (13, 70),
             (14, 76), (15, 80), (16, 78), (17, 72), (18, 68), (19, 74),
             (20, 79), (21, 82), (22, 78), (23, 71),
         ]
-        let occupancy: [(String, String, Int, String)] = [
-            ("HSSE 3rd Floor", "45%", 82, "High quality"),
-            ("WALC Basement", "72%", 79, "High quality"),
-            ("Hicks 2nd Floor", "58%", 76, "High quality"),
-            ("WALC Main Floor", "95%", 58, "Overcrowded"),
-            ("Krach Atrium", "82%", 64, "Needs attention"),
+        let dayOfWeekData: [(String, Int)] = [
+            ("Mon", 156), ("Tue", 142), ("Wed", 168),
+            ("Thu", 151), ("Fri", 98), ("Sat", 72), ("Sun", 60),
         ]
 
         return VStack(alignment: .leading, spacing: 16) {
@@ -200,13 +195,18 @@ struct AdminDashboardView: View {
                 card("Avg Focus Score by Building") {
                     Chart(buildingFocus, id: \.0) { name, score in
                         BarMark(x: .value("Score", score), y: .value("Building", name))
-                            .foregroundStyle(score >= 75 ? AppColors.accentLight : (score >= 60 ? AppColors.warning : AppColors.danger))
+                            .foregroundStyle(AppColors.accent)
                             .cornerRadius(4)
                     }
                     .chartXScale(domain: 0...100)
-                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textSecondary) } }
-                    .frame(height: 240)
+                    .chartXAxis { AxisMarks { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .chartYAxis { AxisMarks { _ in
+                        AxisValueLabel().font(.system(size: 11)).foregroundStyle(AppColors.textSecondary)
+                    } }
+                    .frame(height: 260)
                 }
 
                 card("Focus by Time of Day") {
@@ -215,7 +215,7 @@ struct AdminDashboardView: View {
                             x: .value("Hour", hourLabel(hour)),
                             y: .value("Score", score)
                         )
-                        .foregroundStyle(AppColors.accentLight.gradient)
+                        .foregroundStyle(AppColors.accent)
                         .cornerRadius(3)
                     }
                     .chartYScale(domain: 40...90)
@@ -223,100 +223,41 @@ struct AdminDashboardView: View {
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
                         AxisValueLabel().foregroundStyle(AppColors.textMuted)
                     } }
-                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .frame(height: 240)
+                    .chartXAxis { AxisMarks { _ in
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .frame(height: 260)
                 }
             }
 
-            card("Occupancy vs Focus") {
-                tableView(
-                    headers: ["Space", "Avg Occupancy", "Avg Focus", "Signal"],
-                    rows: occupancy.map { name, occ, focus, signal in
-                        [name, occ, "\(focus)", signal]
-                    },
-                    signalColumn: 3
-                )
-            }
-        }
-    }
-
-    // MARK: - Tab 2: Program Effectiveness
-
-    private var programEffectivenessTab: some View {
-        let programs: [(String, Double, Double)] = [
-            ("Peer Success Coaching", 61.2, 72.8),
-            ("Supplemental Instruction", 65.4, 74.1),
-            ("Accountability Groups", 58.9, 67.3),
-            ("Study Skills Consultations", 60.1, 63.8),
-        ]
-        let cohorts: [(String, Double)] = [
-            ("PSC Participants", 4.8), ("SI Participants", 4.2),
-            ("Non-participants", 2.9), ("Academic Notice", 1.7),
-        ]
-        let contentTypes: [(String, Int)] = [
-            ("Problem Sets", 78), ("Writing", 74), ("Reading", 71),
-            ("Video Lectures", 65), ("Flashcards", 62),
-        ]
-
-        return VStack(alignment: .leading, spacing: 16) {
-            Text("For: Academic Success Center — Coaching & Program Impact")
-                .font(.system(size: 11)).italic()
-                .foregroundStyle(AppColors.textMuted)
-
-            card("Before vs After Focus by Program") {
-                let flat: [(String, String, Double)] = programs.flatMap { name, before, after in
-                    [(name, "Before", before), (name, "After", after)]
+            card("Usage by Day of Week") {
+                Chart(dayOfWeekData, id: \.0) { day, sessions in
+                    BarMark(
+                        x: .value("Day", day),
+                        y: .value("Sessions", sessions)
+                    )
+                    .foregroundStyle(AppColors.accent)
+                    .cornerRadius(4)
+                    .annotation(position: .top, spacing: 3) {
+                        Text("\(sessions)")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(AppColors.textMuted)
+                    }
                 }
-                Chart(flat, id: \.0) { name, type, score in
-                    BarMark(x: .value("Score", score), y: .value("Program", name))
-                        .foregroundStyle(type == "After" ? AppColors.accentLight : AppColors.textMuted)
-                        .cornerRadius(4)
-                        .position(by: .value("Type", type))
-                }
-                .chartXScale(domain: 0...100)
-                .chartForegroundStyleScale(["Before": AppColors.textMuted, "After": AppColors.accentLight])
-                .chartXAxis { AxisMarks { _ in
+                .chartYScale(domain: 0...200)
+                .chartYAxis { AxisMarks { _ in
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
                     AxisValueLabel().foregroundStyle(AppColors.textMuted)
                 } }
-                .chartYAxis { AxisMarks { _ in AxisValueLabel().font(.system(size: 11)).foregroundStyle(AppColors.textSecondary) } }
+                .chartXAxis { AxisMarks { _ in
+                    AxisValueLabel().font(.system(size: 12)).foregroundStyle(AppColors.textSecondary)
+                } }
                 .frame(height: 200)
-            }
-
-            HStack(alignment: .top, spacing: 16) {
-                card("Study Days per Week by Cohort") {
-                    Chart(cohorts, id: \.0) { name, days in
-                        BarMark(x: .value("Cohort", name), y: .value("Days", days))
-                            .foregroundStyle(days >= 4 ? AppColors.accentLight : (days >= 3 ? AppColors.warning : AppColors.danger))
-                            .cornerRadius(4)
-                            .annotation(position: .top, spacing: 2) {
-                                Text("\(days, specifier: "%.1f")")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
-                    }
-                    .chartYScale(domain: 0...6)
-                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .frame(height: 200)
-                }
-
-                card("Focus Score by Content Type") {
-                    Chart(contentTypes, id: \.0) { name, score in
-                        BarMark(x: .value("Score", score), y: .value("Type", name))
-                            .foregroundStyle(AppColors.accentLight)
-                            .cornerRadius(4)
-                    }
-                    .chartXScale(domain: 0...100)
-                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textSecondary) } }
-                    .frame(height: 200)
-                }
             }
         }
     }
 
-    // MARK: - Tab 3: Retention Signals
+    // MARK: - Tab 2: Retention Signals
 
     private var retentionSignalsTab: some View {
         let semesterTrend: [(Int, Int)] = [
@@ -325,16 +266,25 @@ struct AdminDashboardView: View {
             (13, 74), (14, 71), (15, 68), (16, 64),
         ]
         let yearData: [(String, Int)] = [
-            ("Freshman", 68), ("Sophomore", 72), ("Junior", 76), ("Senior", 74), ("Graduate", 80),
+            ("Graduate", 80), ("Junior", 76), ("Senior", 74),
+            ("Sophomore", 72), ("Freshman", 68),
         ]
         let collegeData: [(String, Int)] = [
-            ("Engineering", 76), ("Science", 74), ("Management", 71), ("Liberal Arts", 69),
+            ("Engineering", 76), ("Science", 74),
+            ("Management", 71), ("Liberal Arts", 69),
         ]
-        let courseData: [(String, Int, Double, String, String)] = [
-            ("MA 153", 412, 58.2, "187 (45%)", "+9.4 pts"),
-            ("CHM 115", 389, 61.4, "143 (37%)", "+7.1 pts"),
-            ("PHYS 172", 521, 55.8, "198 (38%)", "+4.2 pts"),
-            ("BIOL 110", 298, 63.1, "89 (30%)", "+3.8 pts"),
+        let majorDetailData: [(String, Double, Int)] = [
+            ("Computer Science", 14.2, 82),
+            ("Engineering", 12.8, 78),
+            ("Science", 11.5, 74),
+            ("Liberal Arts", 9.1, 69),
+            ("Business", 8.4, 71),
+        ]
+        let correlationData: [(hours: Double, focus: Double)] = [
+            (2, 45), (3, 52), (4, 58), (5, 65), (6, 68), (7, 72),
+            (8, 74), (9, 76), (10, 80), (11, 82), (12, 83), (13, 84),
+            (14, 82), (15, 80), (16, 78), (17, 75), (18, 72), (19, 68),
+            (20, 65), (22, 60), (24, 55),
         ]
 
         return VStack(alignment: .leading, spacing: 16) {
@@ -345,21 +295,23 @@ struct AdminDashboardView: View {
             card("Campus Focus Trend — Semester Arc") {
                 Chart(semesterTrend, id: \.0) { week, score in
                     LineMark(x: .value("Week", week), y: .value("Score", score))
-                        .foregroundStyle(AppColors.accentLight)
+                        .foregroundStyle(AppColors.accent)
                         .lineStyle(StrokeStyle(lineWidth: 2.5))
                     AreaMark(x: .value("Week", week), y: .value("Score", score))
                         .foregroundStyle(
-                            .linearGradient(colors: [AppColors.accentLight.opacity(0.2), .clear],
+                            .linearGradient(colors: [AppColors.accent.opacity(0.15), .clear],
                                             startPoint: .top, endPoint: .bottom)
                         )
                     PointMark(x: .value("Week", week), y: .value("Score", score))
-                        .foregroundStyle(score <= 65 ? AppColors.danger : AppColors.accentLight)
+                        .foregroundStyle(score <= 65 ? AppColors.danger : AppColors.accent)
                         .symbolSize(score <= 65 ? 40 : 20)
                 }
                 .chartYScale(domain: 50...85)
                 .chartXAxis { AxisMarks(values: [1, 4, 7, 8, 12, 16]) { v in
                     AxisValueLabel {
-                        if let w = v.as(Int.self) { Text("Wk \(w)").font(.system(size: 9)).foregroundStyle(AppColors.textMuted) }
+                        if let w = v.as(Int.self) {
+                            Text("Wk \(w)").font(.system(size: 9)).foregroundStyle(AppColors.textMuted)
+                        }
                     }
                 } }
                 .chartYAxis { AxisMarks { _ in
@@ -374,7 +326,7 @@ struct AdminDashboardView: View {
                 }
             }
 
-            // Alert cards
+            // At-Risk Alert cards
             HStack(spacing: 14) {
                 alertCard("23 students", "3+ week decline, not on BoilerConnect", .red)
                 alertCard("41 students", "2-week decline, partially flagged", .orange)
@@ -384,65 +336,128 @@ struct AdminDashboardView: View {
                 .font(.system(size: 9)).italic()
                 .foregroundStyle(AppColors.textMuted)
 
+            // Focus by Year & College — horizontal bars so labels are fully visible
             HStack(alignment: .top, spacing: 16) {
                 card("Focus by Student Year") {
                     Chart(yearData, id: \.0) { year, score in
-                        BarMark(x: .value("Year", year), y: .value("Score", score))
-                            .foregroundStyle(AppColors.accentLight.gradient)
+                        BarMark(x: .value("Score", score), y: .value("Year", year))
+                            .foregroundStyle(AppColors.accent)
                             .cornerRadius(4)
                     }
-                    .chartYScale(domain: 50...90)
-                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .frame(height: 180)
+                    .chartXScale(domain: 0...100)
+                    .chartXAxis { AxisMarks { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .chartYAxis { AxisMarks { _ in
+                        AxisValueLabel().font(.system(size: 11)).foregroundStyle(AppColors.textSecondary)
+                    } }
+                    .frame(height: 160)
                 }
+
                 card("Focus by College") {
                     Chart(collegeData, id: \.0) { college, score in
-                        BarMark(x: .value("College", college), y: .value("Score", score))
-                            .foregroundStyle(AppColors.accentLight.gradient)
+                        BarMark(x: .value("Score", score), y: .value("College", college))
+                            .foregroundStyle(AppColors.accent)
                             .cornerRadius(4)
                     }
-                    .chartYScale(domain: 50...90)
-                    .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(AppColors.textMuted) } }
-                    .frame(height: 180)
+                    .chartXScale(domain: 0...100)
+                    .chartXAxis { AxisMarks { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .chartYAxis { AxisMarks { _ in
+                        AxisValueLabel().font(.system(size: 11)).foregroundStyle(AppColors.textSecondary)
+                    } }
+                    .frame(height: 140)
                 }
             }
 
-            card("DFW Course Tracking") {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Course").frame(width: 80, alignment: .leading)
-                        Text("Enrollment").frame(width: 80)
-                        Text("Avg Focus").frame(width: 80)
-                        Text("Incentive Participants").frame(maxWidth: .infinity)
-                        Text("Focus Lift").frame(width: 80)
-                    }
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(AppColors.textMuted)
-                    .padding(.horizontal, 12).padding(.bottom, 6)
-
-                    AppColors.border.frame(height: 1)
-
-                    ForEach(courseData, id: \.0) { course, enroll, focus, participants, lift in
-                        HStack {
-                            Text(course).fontWeight(.semibold).frame(width: 80, alignment: .leading)
-                            Text("\(enroll)").frame(width: 80)
-                            Text(String(format: "%.1f", focus))
-                                .foregroundStyle(focus < 60 ? AppColors.danger : AppColors.textSecondary)
-                                .frame(width: 80)
-                            Text(participants).frame(maxWidth: .infinity)
-                            Text(lift)
-                                .foregroundStyle(AppColors.accentLight)
-                                .fontWeight(.semibold)
-                                .frame(width: 80)
-                        }
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppColors.textPrimary)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(courseData.firstIndex(where: { $0.0 == course })! % 2 == 1 ? AppColors.bgPrimary : Color.clear)
-                    }
+            // Avg Focus Score & Study Hours by Major — grouped horizontal bars
+            card("Avg Focus Score & Study Hours by Major") {
+                let flat: [(String, String, Double)] = majorDetailData.flatMap { major, hours, focus in
+                    [(major, "Study Hours/wk", hours), (major, "Focus Score", Double(focus))]
                 }
+                Chart(flat, id: \.0) { major, metric, value in
+                    BarMark(x: .value("Value", value), y: .value("Major", major))
+                        .foregroundStyle(metric == "Focus Score" ? AppColors.accent : AppColors.textMuted.opacity(0.5))
+                        .cornerRadius(3)
+                        .position(by: .value("Metric", metric))
+                }
+                .chartXScale(domain: 0...100)
+                .chartXAxis { AxisMarks { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                    AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                } }
+                .chartYAxis { AxisMarks { _ in
+                    AxisValueLabel().font(.system(size: 11)).foregroundStyle(AppColors.textSecondary)
+                } }
+                .chartForegroundStyleScale([
+                    "Focus Score": AppColors.accent,
+                    "Study Hours/wk": AppColors.textMuted.opacity(0.5),
+                ])
+                .chartLegend(position: .topLeading, spacing: 8)
+                .frame(height: 200)
+            }
+
+            // Focus Score vs Study Time — scatter plot
+            card("Focus Score vs Study Time — Correlation") {
+                ZStack(alignment: .topLeading) {
+                    // Optimal zone shading (10–15 hrs, 75–85 focus)
+                    GeometryReader { geo in
+                        let xMin = 0.0, xMax = 25.0
+                        let yMin = 40.0, yMax = 95.0
+                        let xScale = geo.size.width / (xMax - xMin)
+                        let yScale = geo.size.height / (yMax - yMin)
+                        let zoneX = CGFloat(10 - xMin) * xScale
+                        let zoneW = CGFloat(15 - 10) * xScale
+                        let zoneY = geo.size.height - CGFloat(85 - yMin) * yScale
+                        let zoneH = CGFloat(85 - 75) * yScale
+
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(AppColors.accent.opacity(0.08))
+                            .frame(width: zoneW, height: zoneH)
+                            .offset(x: zoneX, y: zoneY)
+
+                        Text("Optimal Zone")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(AppColors.accent.opacity(0.7))
+                            .offset(x: zoneX + 2, y: zoneY - 14)
+                    }
+                    .frame(height: 250)
+
+                    Chart(correlationData, id: \.hours) { item in
+                        PointMark(
+                            x: .value("Study Hours/Week", item.hours),
+                            y: .value("Focus Score", item.focus)
+                        )
+                        .foregroundStyle(
+                            item.hours >= 10 && item.hours <= 15
+                                ? AppColors.accent
+                                : AppColors.textMuted.opacity(0.6)
+                        )
+                        .symbolSize(60)
+                    }
+                    .chartXScale(domain: 0...25)
+                    .chartYScale(domain: 40...95)
+                    .chartXAxisLabel("Study Hours per Week", alignment: .center)
+                    .chartYAxisLabel("Avg Focus Score", position: .leading)
+                    .chartXAxis { AxisMarks { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .chartYAxis { AxisMarks { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
+                        AxisValueLabel().foregroundStyle(AppColors.textMuted)
+                    } }
+                    .frame(height: 250)
+                }
+                .frame(height: 250)
+
+                Text("Students who study 10–15 hours per week show the highest focus scores. Beyond 15 hours, focus quality decreases — suggesting diminishing returns from excessive study time.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .padding(.top, 6)
             }
         }
     }
@@ -500,7 +515,7 @@ struct AdminDashboardView: View {
             switch self {
             case .red: return AppColors.danger
             case .orange: return AppColors.warning
-            case .green: return AppColors.accentLight
+            case .green: return AppColors.accent
             }
         }
         var label: String {
@@ -510,49 +525,6 @@ struct AdminDashboardView: View {
             case .green: return "Resolved"
             }
         }
-    }
-
-    private func tableView(headers: [String], rows: [[String]], signalColumn: Int?) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                ForEach(headers.indices, id: \.self) { i in
-                    Text(headers[i])
-                        .frame(maxWidth: .infinity, alignment: i == 0 ? .leading : .center)
-                }
-            }
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(AppColors.textMuted)
-            .padding(.horizontal, 12).padding(.bottom, 6)
-
-            AppColors.border.frame(height: 1)
-
-            ForEach(rows.indices, id: \.self) { rowIdx in
-                HStack {
-                    ForEach(rows[rowIdx].indices, id: \.self) { colIdx in
-                        if colIdx == signalColumn {
-                            Text(rows[rowIdx][colIdx])
-                                .foregroundStyle(signalColor(rows[rowIdx][colIdx]))
-                                .fontWeight(.medium)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        } else {
-                            Text(rows[rowIdx][colIdx])
-                                .foregroundStyle(colIdx == 0 ? AppColors.textPrimary : AppColors.textSecondary)
-                                .fontWeight(colIdx == 0 ? .medium : .regular)
-                                .frame(maxWidth: .infinity, alignment: colIdx == 0 ? .leading : .center)
-                        }
-                    }
-                }
-                .font(.system(size: 11))
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(rowIdx % 2 == 1 ? AppColors.bgPrimary : Color.clear)
-            }
-        }
-    }
-
-    private func signalColor(_ signal: String) -> Color {
-        if signal.contains("High quality") { return AppColors.accentLight }
-        if signal.contains("Overcrowded") { return AppColors.warning }
-        return AppColors.danger
     }
 
     private func hourLabel(_ hour: Int) -> String {

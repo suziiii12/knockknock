@@ -87,7 +87,7 @@ struct ProfileView: View {
                     ProfileStat(label: "Total Sessions", value: "\(user.totalSessions)")
                     ProfileStat(label: "Total Hours", value: user.totalHours.oneDecimal)
                     ProfileStat(label: "Avg Score", value: "\(user.avgFocusScore)")
-                    ProfileStat(label: "Consistency", value: "\(Int(user.weeklyConsistency * 100))%")
+                    ProfileStat(label: "Weekly Pts", value: "\(user.totalScore)pts")
                 }
                 .padding(.horizontal, 40)
 
@@ -166,35 +166,49 @@ struct ProfileView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)
 
-                // 6. Streak
+                // 6. This Week's Scores by Building
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 6) {
-                        Text("\u{1F525}")
-                        Text("\(MockData.streakDays) Day Streak")
-                            .font(AppFonts.heading)
-                            .foregroundStyle(AppColors.textPrimary)
+                    Text("This Week's Scores")
+                        .font(AppFonts.heading)
+                        .foregroundStyle(AppColors.textPrimary)
+
+                    ForEach(MockData.weeklyBuildingScores, id: \.buildingId) { entry in
+                        HStack {
+                            Text(entry.abbreviation)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(AppColors.textSecondary)
+                                .frame(width: 48, alignment: .leading)
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(AppColors.bgTertiary)
+                                        .frame(height: 6)
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(AppColors.accent)
+                                        .frame(width: geo.size.width * min(Double(entry.score) / 200.0, 1.0), height: 6)
+                                }
+                            }
+                            .frame(height: 6)
+                            Text("+\(entry.score)pts")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(AppColors.accent)
+                                .frame(width: 60, alignment: .trailing)
+                        }
+                        .padding(12)
+                        .background(AppColors.bgSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
 
-                    HStack(spacing: 8) {
-                        let days = ["M", "T", "W", "T", "F", "S", "S"]
-                        ForEach(0..<7, id: \.self) { i in
-                            VStack(spacing: 4) {
-                                Circle()
-                                    .fill(MockData.streakDots[i] ? AppColors.accent : AppColors.bgTertiary)
-                                    .frame(width: 24, height: 24)
-                                    .overlay(
-                                        MockData.streakDots[i]
-                                            ? Image(systemName: "checkmark")
-                                                .font(.system(size: 10, weight: .bold))
-                                                .foregroundStyle(.white)
-                                            : nil
-                                    )
-                                Text(days[i])
-                                    .font(AppFonts.small)
-                                    .foregroundStyle(AppColors.textMuted)
-                            }
-                        }
+                    HStack {
+                        Text("Total")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AppColors.textMuted)
+                        Spacer()
+                        Text("\(user.totalScore)pts")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(AppColors.accent)
                     }
+                    .padding(.horizontal, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)

@@ -4,7 +4,7 @@ struct FocusGaugeView: View {
     let score: Int
 
     private var gaugeColor: Color {
-        if score >= 80 { return AppColors.accentLight }
+        if score >= 80 { return AppColors.accent }
         if score >= 60 { return AppColors.warning }
         return AppColors.danger
     }

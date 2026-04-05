@@ -23,18 +23,18 @@ enum AppColors {
     // Shadow
     static let cardShadow = Color.black.opacity(0.06)
 
-    // Territory user colors
+    // Territory user colors — 빨주노초파남보 + cyan + brown, maximally distinct
     static let userColors: [Color] = [
-        Color(red: 0/255, green: 143/255, blue: 136/255),     // Teal
-        Color(red: 124/255, green: 92/255, blue: 252/255),     // Purple
-        Color(red: 245/255, green: 130/255, blue: 49/255),     // Orange
-        Color(red: 36/255, green: 123/255, blue: 245/255),     // Blue
-        Color(red: 230/255, green: 73/255, blue: 128/255),     // Pink
-        Color(red: 245/255, green: 189/255, blue: 0/255),      // Yellow
-        Color(red: 16/255, green: 185/255, blue: 129/255),     // Emerald
-        Color(red: 99/255, green: 102/255, blue: 241/255),     // Indigo
-        Color(red: 244/255, green: 63/255, blue: 94/255),      // Rose
-        Color(red: 132/255, green: 204/255, blue: 22/255),     // Lime
+        Color(red: 220/255, green:  38/255, blue:  38/255),    // 1. RED
+        Color(red: 245/255, green: 158/255, blue:  11/255),    // 2. ORANGE
+        Color(red: 250/255, green: 204/255, blue:  21/255),    // 3. YELLOW
+        Color(red:  34/255, green: 197/255, blue:  94/255),    // 4. GREEN
+        Color(red:   6/255, green: 182/255, blue: 212/255),    // 5. CYAN
+        Color(red:  59/255, green: 130/255, blue: 246/255),    // 6. BLUE
+        Color(red:  99/255, green: 102/255, blue: 241/255),    // 7. INDIGO
+        Color(red: 168/255, green:  85/255, blue: 247/255),    // 8. PURPLE
+        Color(red: 236/255, green:  72/255, blue: 153/255),    // 9. PINK
+        Color(red: 115/255, green:  75/255, blue:  35/255),    // 10. BROWN
     ]
 }
 

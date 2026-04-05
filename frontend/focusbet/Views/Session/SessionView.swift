@@ -6,13 +6,16 @@ struct SessionView: View {
     let onNavigate: (Route) -> Void
 
     @State private var remainingSeconds: Int
-    @State private var focusScore: Int = 87
-    @State private var scores = FocusScoreData(gaze: 91, posture: 85, blink: 88, keyMouse: 82, tabs: 79, checkIn: 95)
+    @State private var scores = FocusScoreData(screenCapture: 85, motionDetection: 85)
+
+    private var focusScore: Int { scores.focusLevel }
+    private var totalSeconds: Int { duration == 1 ? 30 : duration * 60 }
     @State private var showCheckIn = false
     @State private var timer: Timer?
     @State private var scoreTimer: Timer?
     @State private var checkInTimer: Timer?
     @State private var cameraService = CameraService()
+    @State private var recordingPulse = false
 
     init(duration: Int, buildingId: String, onNavigate: @escaping (Route) -> Void) {
         self.duration = duration
@@ -40,21 +43,47 @@ struct SessionView: View {
                     .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
                     .padding(24)
 
-                // Tracking badge
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(AppColors.accent)
-                        .frame(width: 6, height: 6)
-                    Text("Tracking active")
-                        .font(AppFonts.small)
-                        .foregroundStyle(AppColors.accent)
+                // Status badges
+                HStack(spacing: 8) {
+                    // Tracking badge
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(AppColors.accent)
+                            .frame(width: 6, height: 6)
+                        Text("Tracking active")
+                            .font(AppFonts.small)
+                            .foregroundStyle(AppColors.accent)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppColors.accent.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    // Screen recording badge
+                    HStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.red.opacity(0.4))
+                                .frame(width: 12, height: 12)
+                                .scaleEffect(recordingPulse ? 1.0 : 0.5)
+                                .opacity(recordingPulse ? 0.0 : 0.6)
+                                .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: false), value: recordingPulse)
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 6, height: 6)
+                        }
+                        Text("Screen is being recorded")
+                            .font(AppFonts.small)
+                            .foregroundStyle(Color.red)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.red.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(AppColors.bgSecondary.opacity(0.9))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
                 .padding(.leading, 36)
                 .padding(.top, 36)
+                .onAppear { recordingPulse = true }
 
                 // Simulated gaze dots
                 ForEach(0..<3, id: \.self) { i in
@@ -90,7 +119,11 @@ struct SessionView: View {
                     FocusGaugeView(score: focusScore)
 
                     // Signal bars
-                    SignalBarsView(scores: scores)
+                    SignalBarsView(
+                        scores: scores,
+                        elapsedSeconds: totalSeconds - remainingSeconds,
+                        totalSeconds: totalSeconds
+                    )
 
                     // Timer
                     VStack(spacing: 4) {
@@ -123,13 +156,13 @@ struct SessionView: View {
                                 .foregroundStyle(AppColors.accent)
                         }
                         HStack {
-                            Text("Consistency")
+                            Text("Session Score")
                                 .font(AppFonts.caption)
                                 .foregroundStyle(AppColors.textMuted)
                             Spacer()
-                            Text("5/7 days")
+                            Text("\(FocusScoreData.sessionScore(focusLevel: focusScore, durationMinutes: (totalSeconds - remainingSeconds) / 60))pts")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(AppColors.textPrimary)
+                                .foregroundStyle(AppColors.accent)
                         }
                     }
                     .padding(16)
@@ -162,13 +195,8 @@ struct SessionView: View {
 
         scoreTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
             withAnimation {
-                focusScore = Int.random(in: 80...95)
-                scores.gaze = Int.random(in: 82...96)
-                scores.posture = Int.random(in: 78...92)
-                scores.blink = Int.random(in: 80...94)
-                scores.keyMouse = Int.random(in: 72...90)
-                scores.tabs = Int.random(in: 70...88)
-                scores.checkIn = Int.random(in: 85...100)
+                scores.screenCapture = Int.random(in: 75...95)
+                scores.motionDetection = Int.random(in: 70...92)
             }
         }
 

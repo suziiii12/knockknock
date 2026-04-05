@@ -6,11 +6,10 @@ struct User: Identifiable, Hashable, Sendable {
     let name: String
     let initials: String
     let colorIndex: Int
-    var totalScore: Int
+    var totalScore: Int       // this week's session score total across all buildings
     var totalSessions: Int
     var totalHours: Double
     var avgFocusScore: Int
-    var weeklyConsistency: Double
     var kingBuildings: [String]
     var isDeviceVerified: Bool
 
