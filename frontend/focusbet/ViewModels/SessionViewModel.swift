@@ -71,7 +71,12 @@ class SessionViewModel {
             focusTracking.startTracking()
 
             // Start TRIBE v2 screen recording + analysis loop (after permissions granted)
-            tribeAnalysis.startAnalysis()
+            // Pass dependencies so TRIBE can post focus levels to the real backend
+            tribeAnalysis.startAnalysis(
+                sessionIdProvider: { [weak self] in self?.sessionId },
+                screenCapture: screenCapture,
+                focusTracking: focusTracking
+            )
         }
 
         // Start LSTM engagement scoring session

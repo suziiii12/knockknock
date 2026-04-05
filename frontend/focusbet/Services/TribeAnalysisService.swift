@@ -1,9 +1,13 @@
 import Foundation
 import AppKit
 
-/// Manages the screen-capture → TRIBE v2 analysis loop.
-/// Records 20-second screen clips every 60 seconds and sends them to the TRIBE v2
-/// server for cognitive demand analysis.
+/// Manages the screen-capture → analysis → backend focus-level posting loop.
+///
+/// Every `sendInterval` seconds, records a `clipDuration`-second screen clip.
+/// If the TRIBE v2 server is reachable, the clip is sent for cognitive analysis.
+/// If not, falls back to the frontmost-app classification from ScreenCaptureService.
+/// Either way, the derived focus score is posted to the production backend via
+/// APIService.postFocusLevel() so the server actually receives data.
 @Observable
 @MainActor
 class TribeAnalysisService {
@@ -28,40 +32,49 @@ class TribeAnalysisService {
     let clipDuration: TimeInterval = 20
     let sendInterval: TimeInterval = 60
 
-    // MARK: - Private
+    // MARK: - Dependencies (set via startAnalysis)
 
     private var recorder: ScreenRecorder?
     private var sendTimer: Timer?
     private let store = SessionStore()
     private var captureTask: Task<Void, Never>?
 
+    /// Closure to get the current session ID (set by SessionViewModel)
+    private var getSessionId: (() -> Int?)?
+    /// Reference to ScreenCaptureService for fallback app scoring
+    private var screenCaptureService: ScreenCaptureService?
+    /// Reference to FocusTrackingService to update scores
+    private var focusTrackingService: FocusTrackingService?
+
     // MARK: - Lifecycle
 
-    func startAnalysis() {
+    func startAnalysis(
+        sessionIdProvider: @escaping () -> Int?,
+        screenCapture: ScreenCaptureService,
+        focusTracking: FocusTrackingService
+    ) {
         let rec = ScreenRecorder()
         recorder = rec
+        getSessionId = sessionIdProvider
+        screenCaptureService = screenCapture
+        focusTrackingService = focusTracking
+
         clips = []
         isAnalyzing = false
         store.start()
         demand = 0; gate = 0; pfc = 0; dmn = 0; lang = 0
         encodingType = .idle
         contentLabel = ""; contentReason = ""
-        statusMessage = "Requesting screen capture permission..."
-
-        // Request screen capture permission first, then start capture loop
-        let dur = clipDuration
-        let interval = sendInterval
 
         // Check/request screen recording permission
         if !CGPreflightScreenCaptureAccess() {
             CGRequestScreenCaptureAccess()
-            print("[tribe] Screen capture permission requested — user must grant in System Preferences")
-            statusMessage = "Grant screen recording permission in System Preferences, then restart session"
-            // Even if not yet granted, proceed — SCShareableContent will prompt or fail with a clear error
+            print("[tribe] Screen capture permission requested")
         }
 
         statusMessage = "Recording screen..."
-        print("[tribe] Analysis started — \(Int(dur))s clips every \(Int(interval))s")
+        let interval = sendInterval
+        print("[tribe] Analysis started — \(Int(clipDuration))s clips every \(Int(interval))s")
 
         // Schedule recurring timer
         sendTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -83,13 +96,15 @@ class TribeAnalysisService {
         captureTask?.cancel()
         captureTask = nil
         recorder = nil
+        getSessionId = nil
+        screenCaptureService = nil
+        focusTrackingService = nil
         statusMessage = "Analysis stopped"
         print("[tribe] Analysis stopped — \(clips.count) clips collected")
     }
 
     /// Returns the session summary after re-computing clips with LSTM engagement scores.
     func buildSummary(lstm: LSTMService) -> SessionSummary {
-        // Try to get real engagement scores from LSTM CSV
         if let csvPath = lstm.findLatestCSV() {
             let scores = lstm.readScores(from: csvPath)
             if !scores.isEmpty {
@@ -98,17 +113,11 @@ class TribeAnalysisService {
                     let focus = eng * clip.gate
                     let encoding = classifyEncoding(engagement: eng, gate: clip.gate)
                     return ClipResult(
-                        timestamp: clip.timestamp,
-                        engagement: eng,
-                        gate: clip.gate,
-                        focusScore: focus,
-                        encodingType: encoding,
-                        contentLabel: clip.contentLabel,
-                        contentReason: clip.contentReason,
+                        timestamp: clip.timestamp, engagement: eng,
+                        gate: clip.gate, focusScore: focus, encodingType: encoding,
+                        contentLabel: clip.contentLabel, contentReason: clip.contentReason,
                         brainMapData: clip.brainMapData,
-                        pfc: clip.pfc,
-                        dmn: clip.dmn,
-                        lang: clip.lang
+                        pfc: clip.pfc, dmn: clip.dmn, lang: clip.lang
                     )
                 }
                 store.clips = clips
@@ -128,36 +137,137 @@ class TribeAnalysisService {
         statusMessage = "Capturing \(Int(clipDuration))s clip..."
         print("[tribe] Starting \(Int(clipDuration))s screen capture...")
 
-        // Capture the config values before entering detached context
         let dur = clipDuration
-
         let clipURL: URL
         do {
-            // Record clip off the main actor (ScreenCaptureKit needs a non-main queue)
             clipURL = try await recorder.recordClip(duration: dur)
             print("[tribe] Clip recorded: \(clipURL.lastPathComponent)")
         } catch {
             statusMessage = "Recording error: \(error.localizedDescription)"
             print("[tribe] Recording error: \(error)")
+            // Even if recording fails, post focus level from app monitoring
+            await postFocusLevelFromAppMonitoring()
             return
         }
 
+        // Try TRIBE v2 server first
         statusMessage = "Sending to TRIBE v2..."
         isAnalyzing = true
+
+        var tribeSucceeded = false
         do {
-            try await sendClip(clipURL: clipURL)
+            try await sendClipToTribe(clipURL: clipURL)
+            tribeSucceeded = true
         } catch {
-            statusMessage = "TRIBE error: \(error.localizedDescription)"
-            print("[tribe] Send error: \(error)")
+            print("[tribe] TRIBE server unavailable: \(error.localizedDescription)")
+            statusMessage = "TRIBE offline — using app monitoring"
         }
+
+        // If TRIBE failed, use ScreenCaptureService's app classification as fallback
+        if !tribeSucceeded {
+            await handleFallbackAnalysis(clipURL: clipURL)
+        }
+
+        // Always post focus level to the real backend
+        await postFocusLevelToBackend()
+
         isAnalyzing = false
+        try? FileManager.default.removeItem(at: clipURL)
     }
 
-    private func sendClip(clipURL: URL) async throws {
+    /// Posts focus level from ScreenCaptureService app monitoring (no clip needed)
+    private func postFocusLevelFromAppMonitoring() async {
+        let appScore = screenCaptureService?.tabScore ?? 50
+        let level = Double(appScore) / 100.0
+        let appName = screenCaptureService?.activeAppName ?? "Unknown"
+
+        // Update tracking service scores
+        focusTrackingService?.currentScores = FocusScoreData(
+            screenCapture: appScore,
+            motionDetection: focusTrackingService?.currentScores.motionDetection ?? 50
+        )
+
+        // Post to backend
+        guard let sessionId = getSessionId?() else {
+            print("[tribe] No session ID yet — skipping focus level post")
+            return
+        }
+        do {
+            try await APIService.shared.postFocusLevel(sessionId: sessionId, level: level)
+            print("[tribe] Posted focus level \(level) to backend (app: \(appName), session: \(sessionId))")
+        } catch {
+            print("[tribe] Failed to post focus level: \(error)")
+        }
+    }
+
+    /// When TRIBE server is unavailable, create a clip result from app monitoring data
+    private func handleFallbackAnalysis(clipURL: URL) async {
+        let appScore = screenCaptureService?.tabScore ?? 50
+        let appName = screenCaptureService?.activeAppName ?? "Unknown"
+
+        // Map app score to gate: 100 → 1.0 (studying), 0 → 0.0 (distracted), 40 → 0.5 (neutral)
+        let gateValue: Double = appScore >= 80 ? 1.0 : (appScore >= 30 ? 0.5 : 0.0)
+        let engagement = Double(appScore)
+        let focus = engagement * gateValue
+        let encoding = classifyEncoding(engagement: engagement, gate: gateValue)
+
+        let clip = ClipResult(
+            timestamp: Date(), engagement: engagement, gate: gateValue,
+            focusScore: focus, encodingType: encoding,
+            contentLabel: appName, contentReason: "App monitoring (TRIBE offline)",
+            brainMapData: nil, pfc: 0, dmn: 0, lang: 0
+        )
+
+        self.gate = gateValue
+        self.encodingType = encoding
+        self.contentLabel = appName
+        self.contentReason = "App monitoring"
+        self.statusMessage = "\(encoding.emoji) \(appName) · app monitoring"
+        self.clips.append(clip)
+        self.store.addClip(clip)
+
+        // Update tracking service scores
+        focusTrackingService?.currentScores = FocusScoreData(
+            screenCapture: appScore,
+            motionDetection: focusTrackingService?.currentScores.motionDetection ?? 50
+        )
+
+        print("[tribe] Fallback clip \(clips.count): app=\(appName) score=\(appScore) gate=\(gateValue)")
+    }
+
+    /// Posts the current focus level to the production backend
+    private func postFocusLevelToBackend() async {
+        guard let sessionId = getSessionId?() else {
+            print("[tribe] No session ID — skipping backend post")
+            return
+        }
+
+        // Use the latest clip's focus score, or app monitoring score
+        let focusLevel: Double
+        if let lastClip = clips.last {
+            focusLevel = lastClip.focusScore / 100.0
+        } else {
+            focusLevel = Double(screenCaptureService?.tabScore ?? 50) / 100.0
+        }
+
+        do {
+            try await APIService.shared.postFocusLevel(
+                sessionId: sessionId,
+                level: max(0.0, min(1.0, focusLevel))
+            )
+            print("[tribe] Posted focus level \(focusLevel) to backend (session: \(sessionId))")
+        } catch {
+            print("[tribe] Failed to post focus level: \(error)")
+        }
+    }
+
+    // MARK: - TRIBE v2 Server Communication
+
+    private func sendClipToTribe(clipURL: URL) async throws {
         guard let url = URL(string: "\(serverURL)/analyze?format=mp4") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 300
+        request.timeoutInterval = 30  // shorter timeout to fail fast if server is down
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
@@ -181,7 +291,8 @@ class TribeAnalysisService {
         let result = try JSONDecoder().decode(TribeResponse.self, from: data)
 
         let gateValue = result.gate
-        let encoding = classifyEncoding(engagement: 65.0, gate: gateValue)
+        let engagementScore = 65.0  // placeholder until LSTM provides real value
+        let encoding = classifyEncoding(engagement: engagementScore, gate: gateValue)
 
         var brainData: Data? = nil
         if result.media_type == "mp4", let mediaData = Data(base64Encoded: result.brain_media) {
@@ -189,17 +300,11 @@ class TribeAnalysisService {
         }
 
         let clip = ClipResult(
-            timestamp: Date(),
-            engagement: 65.0,
-            gate: gateValue,
-            focusScore: 65.0 * gateValue,
-            encodingType: encoding,
-            contentLabel: result.content_label ?? "",
-            contentReason: result.content_reason ?? "",
+            timestamp: Date(), engagement: engagementScore, gate: gateValue,
+            focusScore: engagementScore * gateValue, encodingType: encoding,
+            contentLabel: result.content_label ?? "", contentReason: result.content_reason ?? "",
             brainMapData: brainData,
-            pfc: result.pfc,
-            dmn: result.dmn,
-            lang: result.lang
+            pfc: result.pfc, dmn: result.dmn, lang: result.lang
         )
 
         self.demand = result.demand
@@ -214,8 +319,14 @@ class TribeAnalysisService {
         self.statusMessage = "\(encoding.emoji) \(result.content_label ?? "") · \(result.content_reason ?? "")"
         self.clips.append(clip)
         self.store.addClip(clip)
-        print("[tribe] clip \(self.clips.count): gate=\(gateValue) label=\(result.content_label ?? "")")
 
-        try? FileManager.default.removeItem(at: clipURL)
+        // Update tracking service with TRIBE-derived score
+        let tribeScore = Int(result.demand)
+        focusTrackingService?.currentScores = FocusScoreData(
+            screenCapture: tribeScore,
+            motionDetection: focusTrackingService?.currentScores.motionDetection ?? 50
+        )
+
+        print("[tribe] TRIBE clip \(clips.count): gate=\(gateValue) label=\(result.content_label ?? "") demand=\(result.demand)")
     }
 }
