@@ -1,0 +1,579 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C83797F52F816BD4000F9AA8 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C83797F42F816BD4000F9AA8 /* AVFoundation.framework */; };
+		C83797F72F816BDC000F9AA8 /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C83797F62F816BDC000F9AA8 /* AVKit.framework */; };
+		C83797F92F816BE2000F9AA8 /* ScreenCaptureKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C83797F82F816BE2000F9AA8 /* ScreenCaptureKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C83797CF2F815FE6000F9AA8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C83797B82F815FE4000F9AA8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C83797BF2F815FE4000F9AA8;
+			remoteInfo = focuslens_test;
+		};
+		C83797D92F815FE6000F9AA8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C83797B82F815FE4000F9AA8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C83797BF2F815FE4000F9AA8;
+			remoteInfo = focuslens_test;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		C83797C02F815FE4000F9AA8 /* focuslens_test.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = focuslens_test.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C83797CE2F815FE6000F9AA8 /* focuslens_testTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = focuslens_testTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C83797D82F815FE6000F9AA8 /* focuslens_testUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = focuslens_testUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C83797F42F816BD4000F9AA8 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		C83797F62F816BDC000F9AA8 /* AVKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVKit.framework; path = System/Library/Frameworks/AVKit.framework; sourceTree = SDKROOT; };
+		C83797F82F816BE2000F9AA8 /* ScreenCaptureKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScreenCaptureKit.framework; path = System/Library/Frameworks/ScreenCaptureKit.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		C83797C22F815FE4000F9AA8 /* focuslens_test */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = focuslens_test;
+			sourceTree = "<group>";
+		};
+		C83797D12F815FE6000F9AA8 /* focuslens_testTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = focuslens_testTests;
+			sourceTree = "<group>";
+		};
+		C83797DB2F815FE6000F9AA8 /* focuslens_testUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = focuslens_testUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C83797BD2F815FE4000F9AA8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C83797F72F816BDC000F9AA8 /* AVKit.framework in Frameworks */,
+				C83797F92F816BE2000F9AA8 /* ScreenCaptureKit.framework in Frameworks */,
+				C83797F52F816BD4000F9AA8 /* AVFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C83797CB2F815FE6000F9AA8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C83797D52F815FE6000F9AA8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C83797B72F815FE4000F9AA8 = {
+			isa = PBXGroup;
+			children = (
+				C83797C22F815FE4000F9AA8 /* focuslens_test */,
+				C83797D12F815FE6000F9AA8 /* focuslens_testTests */,
+				C83797DB2F815FE6000F9AA8 /* focuslens_testUITests */,
+				C83797F32F816BD4000F9AA8 /* Frameworks */,
+				C83797C12F815FE4000F9AA8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C83797C12F815FE4000F9AA8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C83797C02F815FE4000F9AA8 /* focuslens_test.app */,
+				C83797CE2F815FE6000F9AA8 /* focuslens_testTests.xctest */,
+				C83797D82F815FE6000F9AA8 /* focuslens_testUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C83797F32F816BD4000F9AA8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C83797F82F816BE2000F9AA8 /* ScreenCaptureKit.framework */,
+				C83797F62F816BDC000F9AA8 /* AVKit.framework */,
+				C83797F42F816BD4000F9AA8 /* AVFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C83797BF2F815FE4000F9AA8 /* focuslens_test */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C83797E22F815FE6000F9AA8 /* Build configuration list for PBXNativeTarget "focuslens_test" */;
+			buildPhases = (
+				C83797BC2F815FE4000F9AA8 /* Sources */,
+				C83797BD2F815FE4000F9AA8 /* Frameworks */,
+				C83797BE2F815FE4000F9AA8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C83797C22F815FE4000F9AA8 /* focuslens_test */,
+			);
+			name = focuslens_test;
+			packageProductDependencies = (
+			);
+			productName = focuslens_test;
+			productReference = C83797C02F815FE4000F9AA8 /* focuslens_test.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C83797CD2F815FE6000F9AA8 /* focuslens_testTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C83797E52F815FE6000F9AA8 /* Build configuration list for PBXNativeTarget "focuslens_testTests" */;
+			buildPhases = (
+				C83797CA2F815FE6000F9AA8 /* Sources */,
+				C83797CB2F815FE6000F9AA8 /* Frameworks */,
+				C83797CC2F815FE6000F9AA8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C83797D02F815FE6000F9AA8 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C83797D12F815FE6000F9AA8 /* focuslens_testTests */,
+			);
+			name = focuslens_testTests;
+			packageProductDependencies = (
+			);
+			productName = focuslens_testTests;
+			productReference = C83797CE2F815FE6000F9AA8 /* focuslens_testTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C83797D72F815FE6000F9AA8 /* focuslens_testUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C83797E82F815FE6000F9AA8 /* Build configuration list for PBXNativeTarget "focuslens_testUITests" */;
+			buildPhases = (
+				C83797D42F815FE6000F9AA8 /* Sources */,
+				C83797D52F815FE6000F9AA8 /* Frameworks */,
+				C83797D62F815FE6000F9AA8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C83797DA2F815FE6000F9AA8 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C83797DB2F815FE6000F9AA8 /* focuslens_testUITests */,
+			);
+			name = focuslens_testUITests;
+			packageProductDependencies = (
+			);
+			productName = focuslens_testUITests;
+			productReference = C83797D82F815FE6000F9AA8 /* focuslens_testUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C83797B82F815FE4000F9AA8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					C83797BF2F815FE4000F9AA8 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					C83797CD2F815FE6000F9AA8 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = C83797BF2F815FE4000F9AA8;
+					};
+					C83797D72F815FE6000F9AA8 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = C83797BF2F815FE4000F9AA8;
+					};
+				};
+			};
+			buildConfigurationList = C83797BB2F815FE4000F9AA8 /* Build configuration list for PBXProject "focuslens_test" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C83797B72F815FE4000F9AA8;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C83797C12F815FE4000F9AA8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C83797BF2F815FE4000F9AA8 /* focuslens_test */,
+				C83797CD2F815FE6000F9AA8 /* focuslens_testTests */,
+				C83797D72F815FE6000F9AA8 /* focuslens_testUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C83797BE2F815FE4000F9AA8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C83797CC2F815FE6000F9AA8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C83797D62F815FE6000F9AA8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C83797BC2F815FE4000F9AA8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C83797CA2F815FE6000F9AA8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C83797D42F815FE6000F9AA8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C83797D02F815FE6000F9AA8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C83797BF2F815FE4000F9AA8 /* focuslens_test */;
+			targetProxy = C83797CF2F815FE6000F9AA8 /* PBXContainerItemProxy */;
+		};
+		C83797DA2F815FE6000F9AA8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C83797BF2F815FE4000F9AA8 /* focuslens_test */;
+			targetProxy = C83797D92F815FE6000F9AA8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		C83797E02F815FE6000F9AA8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		C83797E12F815FE6000F9AA8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		C83797E32F815FE6000F9AA8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = focuslens_test/focuslens_test.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Healobi.focuslens-test";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C83797E42F815FE6000F9AA8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = focuslens_test/focuslens_test.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Healobi.focuslens-test";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C83797E62F815FE6000F9AA8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Healobi.focuslens-testTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/focuslens_test.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/focuslens_test";
+			};
+			name = Debug;
+		};
+		C83797E72F815FE6000F9AA8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Healobi.focuslens-testTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/focuslens_test.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/focuslens_test";
+			};
+			name = Release;
+		};
+		C83797E92F815FE6000F9AA8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Healobi.focuslens-testUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = focuslens_test;
+			};
+			name = Debug;
+		};
+		C83797EA2F815FE6000F9AA8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L8DF2NAB6P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Healobi.focuslens-testUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = focuslens_test;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C83797BB2F815FE4000F9AA8 /* Build configuration list for PBXProject "focuslens_test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C83797E02F815FE6000F9AA8 /* Debug */,
+				C83797E12F815FE6000F9AA8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C83797E22F815FE6000F9AA8 /* Build configuration list for PBXNativeTarget "focuslens_test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C83797E32F815FE6000F9AA8 /* Debug */,
+				C83797E42F815FE6000F9AA8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C83797E52F815FE6000F9AA8 /* Build configuration list for PBXNativeTarget "focuslens_testTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C83797E62F815FE6000F9AA8 /* Debug */,
+				C83797E72F815FE6000F9AA8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C83797E82F815FE6000F9AA8 /* Build configuration list for PBXNativeTarget "focuslens_testUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C83797E92F815FE6000F9AA8 /* Debug */,
+				C83797EA2F815FE6000F9AA8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C83797B82F815FE4000F9AA8 /* Project object */;
+}
