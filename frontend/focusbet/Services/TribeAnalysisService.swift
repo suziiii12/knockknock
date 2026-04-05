@@ -90,9 +90,16 @@ class TribeAnalysisService {
         }
     }
 
-    func stopAnalysis() {
+    /// Phase 1: Stop new captures from starting. In-progress capture continues to finish.
+    func stopNewCaptures() {
         sendTimer?.invalidate()
         sendTimer = nil
+        // Do NOT cancel captureTask or nil recorder — let in-progress clip finish
+        print("[tribe] Stopped new captures — waiting for in-progress analysis (\(clips.count) clips so far)")
+    }
+
+    /// Phase 2: Full cleanup after in-progress analysis has finished.
+    func finalizeStop() {
         captureTask?.cancel()
         captureTask = nil
         recorder = nil
@@ -100,7 +107,13 @@ class TribeAnalysisService {
         screenCaptureService = nil
         focusTrackingService = nil
         statusMessage = "Analysis stopped"
-        print("[tribe] Analysis stopped — \(clips.count) clips collected")
+        print("[tribe] Analysis finalized — \(clips.count) clips collected")
+    }
+
+    /// Legacy single-call stop (cancels everything immediately).
+    func stopAnalysis() {
+        stopNewCaptures()
+        finalizeStop()
     }
 
     /// Returns the session summary after re-computing clips with LSTM engagement scores.

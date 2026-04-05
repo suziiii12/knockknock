@@ -107,8 +107,8 @@ class SessionViewModel {
         screenCaptureService = nil
         focusTrackingService = nil
 
-        // Stop the timer and recorder — no new captures will start
-        tribeAnalysis.stopAnalysis()
+        // Phase 1: Stop new captures from starting, but let in-progress clip finish
+        tribeAnalysis.stopNewCaptures()
 
         // Prepare result store with loading state (ResultView shows spinner)
         let resultStore = SessionResultStore.shared
@@ -128,6 +128,9 @@ class SessionViewModel {
                 waited += 1
             }
             print("[SessionViewModel] Analysis done — \(tribeAnalysis.clips.count) clips collected (waited \(waited * 500)ms)")
+
+            // Phase 2: Now fully clean up the analysis service
+            tribeAnalysis.finalizeStop()
 
             // 2. Stop LSTM and fetch engagement export
             _ = await lstm.stopSession()
