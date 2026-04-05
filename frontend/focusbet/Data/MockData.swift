@@ -106,6 +106,12 @@ enum MockData {
             (0.05, 0.05), (0.60, 0.05), (0.60, 0.50),
             (0.95, 0.50), (0.95, 0.95), (0.05, 0.95),
         ]),
+        "heavilon": BuildingFloorPlan(points: [
+            (0.10, 0.10), (0.90, 0.10), (0.90, 0.90), (0.10, 0.90),
+        ]),
+        "rec": BuildingFloorPlan(points: [
+            (0.08, 0.08), (0.92, 0.08), (0.92, 0.92), (0.08, 0.92),
+        ]),
     ]
 
     // Coordinates from OpenStreetMap Overpass API (building centroids)
