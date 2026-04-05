@@ -20,7 +20,7 @@ struct WorldIDView: View {
                             .foregroundStyle(AppColors.accent)
                     }
                     VStack(spacing: 8) {
-                        Text("FocusBet")
+                        Text("LockIn")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
                             .foregroundStyle(AppColors.textPrimary)
                         Text("AI-Powered Study Competition")

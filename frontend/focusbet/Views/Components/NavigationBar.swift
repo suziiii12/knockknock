@@ -23,7 +23,7 @@ struct NavigationBar: View {
     var body: some View {
         HStack(spacing: 0) {
             // Logo
-            Text("FocusBet")
+            Text("LockIn")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(AppColors.accent)
                 .padding(.leading, 24)

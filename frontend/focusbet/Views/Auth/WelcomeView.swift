@@ -18,7 +18,7 @@ struct WelcomeView: View {
                         .foregroundStyle(AppColors.accent)
                 }
 
-                Text("FocusBet")
+                Text("LockIn")
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundStyle(AppColors.textPrimary)
 
