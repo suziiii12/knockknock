@@ -1,0 +1,72 @@
+erDiagram
+    users {
+        int id PK
+        string world_id_nullifier_hash UK
+        string jwt_token
+        datetime created_at
+        string name
+        string school
+        string major
+        string year
+        string expected_graduation
+        string gender
+    }
+
+    buildings {
+        int id PK
+        string name UK
+        string location
+    }
+
+    sessions {
+        int id PK
+        int user_id FK
+        int building_id FK
+        datetime started_at
+        datetime ended_at
+        float duration
+        float final_score
+    }
+
+    focus_level {
+        int id PK
+        int session_id FK
+        datetime timestamp
+        float level
+    }
+
+    weekly_score {
+        int id PK
+        int user_id FK
+        int month
+        int week
+        float weekly_score
+        string uq_user_month_week "UNIQUE(user_id,month,week)"
+    }
+
+    building_score {
+        int id PK
+        int weekly_score_id FK
+        int building_id FK
+        float building_score
+    }
+
+    territory {
+        int id PK
+        int building_id FK
+        int user_id FK
+        float total_score
+        datetime updated_at
+    }
+
+    users ||--o{ sessions : has
+    buildings ||--o{ sessions : hosts
+
+    sessions ||--o{ focus_level : records
+
+    users ||--o{ weekly_score : aggregates
+    weekly_score ||--o{ building_score : contains
+    buildings ||--o{ building_score : categorized_by
+
+    users ||--o{ territory : controls
+    buildings ||--o{ territory : claimed_in

@@ -41,7 +41,6 @@ class ProfileViewModel {
                     totalSessions:    profile.sessionCount,
                     totalHours:       Double(profile.totalMinutes) / 60.0,
                     avgFocusScore:    Int(profile.avgFocusScore),
-                    weeklyConsistency: user.weeklyConsistency,
                     kingBuildings:    user.kingBuildings,   // string slugs — kept from mock until backend stores them
                     isDeviceVerified: user.isDeviceVerified
                 )

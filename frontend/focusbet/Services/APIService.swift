@@ -268,13 +268,9 @@ actor APIService {
                     startTime: startDate,
                     duration: durationMinutes,
                     focusScore: score,
-                    buildingScore: score,
-                    gazeScore: score,
-                    postureScore: score,
-                    blinkScore: score,
-                    keyMouseScore: score,
-                    tabScore: score,
-                    checkInScore: score,
+                    sessionScore: score,
+                    screenCapture: score,
+                    motionDetection: score,
                     isComplete: true
                 )
             }

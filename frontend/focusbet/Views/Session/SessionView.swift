@@ -112,7 +112,7 @@ struct SessionView: View {
                 VStack(spacing: 24) {
                     FocusGaugeView(score: vm.focusScore)
 
-                    SignalBarsView(scores: vm.scores)
+                    SignalBarsView(scores: vm.scores, elapsedSeconds: totalSeconds - remainingSeconds, totalSeconds: totalSeconds)
 
                     // Timer
                     VStack(spacing: 4) {

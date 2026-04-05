@@ -64,7 +64,10 @@ final class ScreenCaptureService {
         activeAppName = name
         let score     = Self.scoreForApp(name: name)
         tabScore      = score
-        focusTrackingService.updateTabScore(score)
+        focusTrackingService.currentScores = FocusScoreData(
+            screenCapture: score,
+            motionDetection: focusTrackingService.currentScores.motionDetection
+        )
     }
 
     private static func scoreForApp(name: String) -> Int {
