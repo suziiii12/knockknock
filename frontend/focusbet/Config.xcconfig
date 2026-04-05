@@ -1,0 +1,15 @@
+// IDKit Build Configuration
+
+// Debug configuration
+DEBUG_SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG IDKIT_ENABLED $(inherited)
+DEBUG_SWIFT_ENABLE_EXPLICIT_MODULES = NO
+DEBUG_SWIFT_INCLUDE_PATHS = $(CONFIGURATION_BUILD_DIR)
+
+// Release configuration  
+RELEASE_SWIFT_ACTIVE_COMPILATION_CONDITIONS = IDKIT_ENABLED $(inherited)
+RELEASE_SWIFT_ENABLE_EXPLICIT_MODULES = NO
+RELEASE_SWIFT_INCLUDE_PATHS = $(CONFIGURATION_BUILD_DIR)
+
+// Apply based on configuration
+#include? "Config Debug.xcconfig"
+#include? "Config Release.xcconfig"

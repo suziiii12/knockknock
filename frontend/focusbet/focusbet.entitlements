@@ -17,5 +17,14 @@
         <string>com.apple.nsurlsessiond</string>
         <string>com.apple.accessibility.api</string>
     </array>
+    <key>com.apple.security.temporary-exception.socket.client</key>
+    <array>
+        <string>localhost</string>
+        <string>127.0.0.1</string>
+    </array>
+    <key>com.apple.security.temporary-exception.iokit-user-client-class</key>
+    <array>
+        <string>RootUserClient</string>
+    </array>
 </dict>
 </plist>

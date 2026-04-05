@@ -27,6 +27,7 @@ final class AuthViewModel {
     var isLoading       = false
     var errorMessage:  String?
     var currentUserId: String?
+    var connectorURL:  URL?    // set by WorldIDService during QR code flow
 
     private let keychainService = "com.focusbet.auth"
     private let keychainAccount = "jwt_token"
@@ -44,20 +45,25 @@ final class AuthViewModel {
 
     /// Triggers the IDKit World ID proof flow, verifies with backend, and
     /// stores the returned JWT in Keychain.
-    func triggerWorldIDFlow() async {
+    func triggerWorldIDFlow(mode: LoginMode = .worldID) async {
         guard !isLoading else { return }
         isLoading     = true
         errorMessage  = nil
+        connectorURL  = nil
 
         do {
-            let token = try await WorldIDService.shared.requestVerification()
+            let token = try await WorldIDService.shared.requestVerification(
+                mode: mode,
+                onConnectorURL: { [weak self] url in self?.connectorURL = url }
+            )
+            connectorURL = nil
             try saveToKeychain(token)
-            currentUserId  = extractUserId(from: token)
+            currentUserId   = extractUserId(from: token)
             await APIService.shared.setToken(token)
-            // Sync to UserDefaults so ContentView's @AppStorage gate flips
             UserDefaults.standard.set(true, forKey: "isLoggedIn")
             isAuthenticated = true
         } catch {
+            connectorURL = nil
             errorMessage = error.localizedDescription
         }
 

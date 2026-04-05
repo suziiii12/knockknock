@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "2640"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <PreActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Fix IDKit Module Map"
+               scriptText = "#!/bin/bash&#10;set -e&#10;&#10;# Find idkit-swift SourcePackages directory&#10;IDKIT_CHECKOUT=$(find ~/Library/Developer/Xcode/DerivedData -name &quot;idkit-swift&quot; -type d 2>/dev/null | head -1)&#10;if [ -z &quot;$IDKIT_CHECKOUT&quot; ]; then&#10;  echo &quot;IDKit checkout not found, skipping modulemap fix&quot;&#10;  exit 0&#10;fi&#10;&#10;# Find and copy idkit_coreFFI headers for all architectures&#10;for FRAMEWORK_PATH in &quot;$IDKIT_CHECKOUT&quot;/Sources/IDKit/Resources/idkitFFI/IDKitFFI.xcframework/*/Headers; do&#10;  if [ -d &quot;$FRAMEWORK_PATH&quot; ]; then&#10;    IDKIT_HEADERS=&quot;$FRAMEWORK_PATH/IDKit&quot;&#10;    if [ -d &quot;$IDKIT_HEADERS&quot; ]; then&#10;      RST_HEADERS=&quot;$FRAMEWORK_PATH&quot;&#10;      echo &quot;Copying IDKit FFI headers from $IDKIT_HEADERS to $RST_HEADERS&quot;&#10;      [ -f &quot;$IDKIT_HEADERS/module.modulemap&quot; ] &amp;&amp; cp &quot;$IDKIT_HEADERS/module.modulemap&quot; &quot;$RST_HEADERS/module.modulemap&quot;&#10;      [ -f &quot;$IDKIT_HEADERS/idkit_coreFFI.h&quot; ] &amp;&amp; cp &quot;$IDKIT_HEADERS/idkit_coreFFI.h&quot; &quot;$RST_HEADERS/idkit_coreFFI.h&quot;&#10;    fi&#10;  fi&#10;done&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "D83632482F7C7AC700109964"
+                     BuildableName = "focusbet.app"
+                     BlueprintName = "focusbet"
+                     ReferencedContainer = "container:focusbet.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D83632482F7C7AC700109964"
+               BuildableName = "focusbet.app"
+               BlueprintName = "focusbet"
+               ReferencedContainer = "container:focusbet.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "D83632482F7C7AC700109964"
+            BuildableName = "focusbet.app"
+            BlueprintName = "focusbet"
+            ReferencedContainer = "container:focusbet.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "D83632482F7C7AC700109964"
+            BuildableName = "focusbet.app"
+            BlueprintName = "focusbet"
+            ReferencedContainer = "container:focusbet.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
