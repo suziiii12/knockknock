@@ -45,3 +45,6 @@ venv/
 CLAUDE.md
 *.xcuserstate
 backend/focusbet.db
+
+# Data exports
+*.csv

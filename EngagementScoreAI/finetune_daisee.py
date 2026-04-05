@@ -65,8 +65,8 @@ except ImportError as e:
     print("Install: pip install torch torchvision opencv-python mediapipe")
     exit(1)
 
-from knockknock.EngagementScoreAI.models.engagement_lstm import EngagementLSTM, load_model
-from knockknock.EngagementScoreAI.pipeline.feature_extractor import FeatureExtractor, RawSignals
+from models.engagement_lstm import EngagementLSTM, load_model
+from pipeline.feature_extractor import FeatureExtractor, RawSignals
 
 def select_device(device: str = "cpu") -> str:
     """Resolve the requested device and fall back to CPU when needed."""

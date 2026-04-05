@@ -123,7 +123,7 @@ class StartResponse(BaseModel):
     external_session_id: Optional[str]
     started_at:          float
     content_type:        str
-    window_sec:          int
+    window_sec:          float
     epoch_sec:           float
     message:             str
 
@@ -155,8 +155,8 @@ def status():
         "session_id":  engine.session_id,
         "external_id": engine.external_id,
         "buffer_fill": round(fill, 3),
-        "buffer_sec":  round(fill * 120, 1),
-        "window_sec":  120,
+        "buffer_sec":  round(fill * engine.epoch_sec, 1),
+        "window_sec":  engine.epoch_sec,
         "epoch_sec":   engine.epoch_sec,
     }
 
@@ -198,13 +198,13 @@ def start_session(body: StartRequest):
         "external_session_id": body.external_session_id,
         "started_at":          time.time(),
         "content_type":        body.content_type,
-        "window_sec":          120,
+        "window_sec":          engine.epoch_sec,
         "epoch_sec":           engine.epoch_sec,
-        "message": (
+        "message":             (
             f"Session {session_id} started. "
             f"First score emitted after {engine.epoch_sec:.0f}s. "
-            f"Full 2-min window established after 120s. "
-            f"Scores saved to DB and exported to JSON on stop."
+            f"Window length set to {engine.epoch_sec:.0f}s, matching epoch duration. "
+            f"Scores exported to CSV on stop."
         ),
     }
 

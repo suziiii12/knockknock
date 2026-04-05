@@ -71,7 +71,7 @@ def generate_pretrained_weights():
         import torch
         import torch.nn as nn
         from torch.utils.data import DataLoader, TensorDataset
-        from knockknock.EngagementScoreAI.models.engagement_lstm import EngagementLSTM
+        from models.engagement_lstm import EngagementLSTM
     except ImportError:
         print("PyTorch not installed. Saving model config only.")
         _save_config_only()
@@ -225,4 +225,4 @@ if __name__ == "__main__":
         print("\nFalling back to synthetic pretrained weights...")
         generate_pretrained_weights()
 
-    print("\nDone. Run: streamlit run app.py")
+    print("\nDone. Run: python test_pipeline.py")

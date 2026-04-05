@@ -1,250 +1,212 @@
 """
 db/store.py
 -----------
-SQLite storage for engagement score windows.
+CSV storage for focus sessions and their score streams.
 
-Schema
-------
-sessions
-  id            INTEGER PK
-  started_at    REAL    (unix timestamp)
-  ended_at      REAL    (unix timestamp, NULL while active)
-  content_type  TEXT
+Session files:
+    exports/session_{id}_{YYYYMMDD_HHMMSS}.csv
 
-scores
-  id            INTEGER PK
-  session_id    INTEGER FK → sessions.id
-  window_start  REAL    (unix timestamp — start of the 2-min window)
-  window_end    REAL    (unix timestamp — end of the 2-min window)
-  recorded_at   REAL    (unix timestamp — when score was written)
-  score         REAL    (0–100)
-  daisee_class  TEXT    (very_low / low / high / very_high)
-  confidence    REAL    (0–1)
-  inferred_state TEXT
-  body_engagement REAL
-  -- raw signal means over the window
-  mean_gaze     REAL
-  mean_head_yaw REAL
-  mean_ear      REAL
-  mean_kpm      REAL
-  mean_posture  REAL
+CSV columns:
+    score
 """
 
-import sqlite3
+import csv
+import datetime
+import re
 import time
-from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-DB_PATH = Path(__file__).parent / "focus.db"
-
-
-def init_db(path: Path = DB_PATH):
-    """Create tables if they don't exist."""
-    with _connect(path) as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                started_at   REAL    NOT NULL,
-                ended_at     REAL,
-                content_type TEXT    NOT NULL DEFAULT 'general'
-            );
-
-            CREATE TABLE IF NOT EXISTS scores (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id      INTEGER NOT NULL REFERENCES sessions(id),
-                window_start    REAL    NOT NULL,
-                window_end      REAL    NOT NULL,
-                recorded_at     REAL    NOT NULL,
-                score           REAL    NOT NULL,
-                daisee_class    TEXT    NOT NULL,
-                confidence      REAL    NOT NULL,
-                inferred_state  TEXT    NOT NULL,
-                body_engagement REAL    NOT NULL,
-                mean_gaze       REAL,
-                mean_head_yaw   REAL,
-                mean_ear        REAL,
-                mean_kpm        REAL,
-                mean_posture    REAL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_scores_session
-                ON scores(session_id);
-            CREATE INDEX IF NOT EXISTS idx_scores_window_start
-                ON scores(window_start);
-        """)
+EXPORT_DIR = Path(__file__).parent.parent / "exports"
+SESSION_FILENAME_RE = re.compile(r"^session_(\d+)_(\d{8}_\d{6})\.csv$")
+_active_sessions: Dict[int, Dict] = {}
 
 
-@contextmanager
-def _connect(path: Path = DB_PATH):
-    conn = sqlite3.connect(str(path), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+def init_db(path: Optional[Path] = None):
+    """Initialize storage for session CSV exports."""
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_exports_dir():
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _format_timestamp(ts: float) -> str:
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y%m%d_%H%M%S")
+
+
+def _session_path(session_id: int, started_at: float) -> Path:
+    return EXPORT_DIR / f"session_{session_id}_{_format_timestamp(started_at)}.csv"
+
+
+def _parse_session_file(path: Path) -> Optional[Dict]:
+    match = SESSION_FILENAME_RE.match(path.name)
+    if not match:
+        return None
+    session_id = int(match.group(1))
+    started_at = datetime.datetime.strptime(match.group(2), "%Y%m%d_%H%M%S").timestamp()
+    return {
+        "id": session_id,
+        "started_at": started_at,
+        "ended_at": path.stat().st_mtime,
+        "content_type": "general",
+        "path": path,
+    }
+
+
+def _load_export_sessions() -> List[Dict]:
+    if not EXPORT_DIR.exists():
+        return []
+    sessions = []
+    for path in EXPORT_DIR.iterdir():
+        if not path.is_file():
+            continue
+        info = _parse_session_file(path)
+        if info:
+            sessions.append(info)
+    return sessions
+
+
+def _session_file(session_id: int) -> Optional[Path]:
+    active = _active_sessions.get(session_id)
+    if active:
+        return active["path"]
+    for session in _load_export_sessions():
+        if session["id"] == session_id:
+            return session["path"]
+    return None
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────
 
-def create_session(content_type: str = "general", path: Path = DB_PATH) -> int:
-    with _connect(path) as conn:
-        cur = conn.execute(
-            "INSERT INTO sessions (started_at, content_type) VALUES (?, ?)",
-            (time.time(), content_type),
-        )
-        return cur.lastrowid
+def create_session(content_type: str = "general", path: Optional[Path] = None) -> int:
+    _ensure_exports_dir()
+    existing_ids = [session["id"] for session in _load_export_sessions()]
+    next_id = max(existing_ids, default=0) + 1
+    started_at = time.time()
+    session_path = _session_path(next_id, started_at)
+
+    with open(session_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["score"])
+
+    _active_sessions[next_id] = {
+        "id": next_id,
+        "started_at": started_at,
+        "ended_at": None,
+        "content_type": content_type,
+        "path": session_path,
+    }
+    return next_id
 
 
-def end_session(session_id: int, path: Path = DB_PATH):
-    with _connect(path) as conn:
-        conn.execute(
-            "UPDATE sessions SET ended_at = ? WHERE id = ?",
-            (time.time(), session_id),
-        )
+def end_session(session_id: int, path: Optional[Path] = None):
+    session = _active_sessions.get(session_id)
+    if session:
+        session["ended_at"] = time.time()
+        _active_sessions.pop(session_id, None)
 
 
-def get_session(session_id: int, path: Path = DB_PATH) -> Optional[dict]:
-    with _connect(path) as conn:
-        row = conn.execute(
-            "SELECT * FROM sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        return dict(row) if row else None
+def get_session(session_id: int, path: Optional[Path] = None) -> Optional[Dict]:
+    session = _active_sessions.get(session_id)
+    if session:
+        return {
+            "id": session["id"],
+            "started_at": session["started_at"],
+            "ended_at": session["ended_at"],
+            "content_type": session["content_type"],
+        }
+
+    session_file = _session_file(session_id)
+    if not session_file:
+        return None
+
+    info = _parse_session_file(session_file)
+    if info:
+        return {
+            "id": info["id"],
+            "started_at": info["started_at"],
+            "ended_at": info["ended_at"],
+            "content_type": info["content_type"],
+        }
+    return None
 
 
-def list_sessions(path: Path = DB_PATH) -> List[dict]:
-    with _connect(path) as conn:
-        rows = conn.execute(
-            "SELECT * FROM sessions ORDER BY started_at DESC"
-        ).fetchall()
-        return [dict(r) for r in rows]
+def list_sessions(path: Optional[Path] = None) -> List[Dict]:
+    sessions = {session["id"]: session for session in _load_export_sessions()}
+    for session_id, active in _active_sessions.items():
+        sessions[session_id] = {
+            "id": active["id"],
+            "started_at": active["started_at"],
+            "ended_at": active["ended_at"],
+            "content_type": active["content_type"],
+        }
+    return sorted(sessions.values(), key=lambda item: item["started_at"], reverse=True)
 
 
 # ── Scores ────────────────────────────────────────────────────────────────────
 
-@dataclass
-class ScoreRecord:
-    session_id:      int
-    window_start:    float
-    window_end:      float
-    score:           float
-    daisee_class:    str
-    confidence:      float
-    inferred_state:  str
-    body_engagement: float
-    mean_gaze:       float = 0.0
-    mean_head_yaw:   float = 0.0
-    mean_ear:        float = 0.0
-    mean_kpm:        float = 0.0
-    mean_posture:    float = 0.0
+def insert_score(
+    session_id: int,
+    window_start: float,
+    window_end: float,
+    score: float,
+    path: Optional[Path] = None,
+) -> int:
+    session_path = _session_file(session_id)
+    if session_path is None:
+        raise ValueError(f"Session {session_id} not found.")
+
+    score_value = round(score, 2)
+    with open(session_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([score_value])
+
+    return sum(1 for _ in open(session_path, "r", encoding="utf-8")) - 1
 
 
-def insert_score(record: ScoreRecord, path: Path = DB_PATH) -> int:
-    with _connect(path) as conn:
-        cur = conn.execute(
-            """INSERT INTO scores (
-                session_id, window_start, window_end, recorded_at,
-                score, daisee_class, confidence, inferred_state,
-                body_engagement, mean_gaze, mean_head_yaw,
-                mean_ear, mean_kpm, mean_posture
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                record.session_id,
-                record.window_start,
-                record.window_end,
-                time.time(),
-                round(record.score, 2),
-                record.daisee_class,
-                round(record.confidence, 4),
-                record.inferred_state,
-                round(record.body_engagement, 2),
-                round(record.mean_gaze, 4),
-                round(record.mean_head_yaw, 4),
-                round(record.mean_ear, 4),
-                round(record.mean_kpm, 4),
-                round(record.mean_posture, 4),
-            ),
-        )
-        return cur.lastrowid
+def _read_scores(session_id: int) -> List[float]:
+    session_path = _session_file(session_id)
+    if session_path is None:
+        raise ValueError(f"Session {session_id} not found.")
+
+    with open(session_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader, None)
+        return [float(row[0]) for row in reader if row]
 
 
 def get_scores(
     session_id: int,
+    path: Optional[Path] = None,
     since: Optional[float] = None,
-    limit: int = 200,
-    path: Path = DB_PATH,
-) -> List[dict]:
-    with _connect(path) as conn:
-        if since:
-            rows = conn.execute(
-                """SELECT * FROM scores
-                   WHERE session_id = ? AND window_start >= ?
-                   ORDER BY window_start ASC LIMIT ?""",
-                (session_id, since, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """SELECT * FROM scores
-                   WHERE session_id = ?
-                   ORDER BY window_start ASC LIMIT ?""",
-                (session_id, limit),
-            ).fetchall()
-        return [dict(r) for r in rows]
+    limit: Optional[int] = None,
+) -> List[float]:
+    scores = _read_scores(session_id)
+    if limit is not None:
+        scores = scores[:limit]
+    return scores
 
 
-def get_latest_score(session_id: int, path: Path = DB_PATH) -> Optional[dict]:
-    with _connect(path) as conn:
-        row = conn.execute(
-            """SELECT * FROM scores WHERE session_id = ?
-               ORDER BY window_start DESC LIMIT 1""",
-            (session_id,),
-        ).fetchone()
-        return dict(row) if row else None
+def get_latest_score(session_id: int, path: Optional[Path] = None) -> Optional[float]:
+    scores = _read_scores(session_id)
+    return scores[-1] if scores else None
 
 
-def session_stats(session_id: int, path: Path = DB_PATH) -> dict:
-    """Aggregate stats for the session summary / insight card."""
-    with _connect(path) as conn:
-        row = conn.execute(
-            """SELECT
-                COUNT(*)            AS total_windows,
-                AVG(score)          AS avg_score,
-                MAX(score)          AS peak_score,
-                MIN(score)          AS trough_score,
-                AVG(mean_gaze)      AS avg_gaze,
-                AVG(mean_kpm)       AS avg_kpm,
-                AVG(mean_posture)   AS avg_posture,
-                SUM(CASE WHEN inferred_state IN ('flow_state','focused')
-                         THEN 1 ELSE 0 END) * 1.0 / COUNT(*) * 100
-                                    AS pct_focused,
-                SUM(CASE WHEN inferred_state = 'flow_state'
-                         THEN 1 ELSE 0 END) * 1.0 / COUNT(*) * 100
-                                    AS pct_flow,
-                SUM(CASE WHEN inferred_state IN
-                         ('disengaged','invisible_distraction')
-                         THEN 1 ELSE 0 END) * 1.0 / COUNT(*) * 100
-                                    AS pct_distracted
-               FROM scores WHERE session_id = ?""",
-            (session_id,),
-        ).fetchone()
-
-        # Duration from session table
-        sess = conn.execute(
-            "SELECT started_at, ended_at FROM sessions WHERE id = ?",
-            (session_id,),
-        ).fetchone()
-
-        duration_min = 0.0
-        if sess:
-            end = sess["ended_at"] or time.time()
-            duration_min = (end - sess["started_at"]) / 60.0
-
-        result = dict(row) if row else {}
-        result["duration_min"] = round(duration_min, 1)
-        return {k: (round(v, 2) if isinstance(v, float) else v)
-                for k, v in result.items()}
+def session_stats(session_id: int) -> Dict[str, Optional[float]]:
+    scores = _read_scores(session_id)
+    if not scores:
+        return {
+            "count": 0,
+            "min": None,
+            "max": None,
+            "mean": None,
+            "latest": None,
+        }
+    return {
+        "count": len(scores),
+        "min": min(scores),
+        "max": max(scores),
+        "mean": sum(scores) / len(scores),
+        "latest": scores[-1],
+    }

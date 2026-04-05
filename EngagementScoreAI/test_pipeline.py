@@ -69,7 +69,7 @@ def _preview_csv(path):
         rows = list(csv.DictReader(f))
     print(f"{len(rows)} score(s) recorded:\n")
     for r in rows:
-        print(f"  [{r['window_start_iso']} → {r['window_end_iso']}]  score={r['score']}")
+        print(f"[score={r['score']}")
 
 
 if __name__ == "__main__":

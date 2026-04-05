@@ -144,8 +144,6 @@ class EngagementLSTMWithRegression(EngagementLSTM):
 
 def load_model(weights_path: str, device: str = "cpu") -> EngagementLSTM:
     """Load model from checkpoint saved by download_weights.py."""
-    import json
-    from pathlib import Path
 
     ckpt = torch.load(weights_path, map_location=device)
     config = ckpt.get("model_config", {})
