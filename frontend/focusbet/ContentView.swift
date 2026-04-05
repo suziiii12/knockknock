@@ -15,7 +15,7 @@ enum Route: Hashable {
 // MARK: - Root view with auth gate
 
 struct ContentView: View {
-    @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @AppStorage("isLoggedIn") private var isLoggedIn = true  // TODO: revert to false after testing
     @AppStorage("isProfileComplete") private var isProfileComplete = false
     @AppStorage("isAdmin") private var isAdmin = false
     @State private var showWorldID = false

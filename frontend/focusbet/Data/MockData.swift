@@ -109,9 +109,6 @@ enum MockData {
         "heavilon": BuildingFloorPlan(points: [
             (0.10, 0.10), (0.90, 0.10), (0.90, 0.90), (0.10, 0.90),
         ]),
-        "rec": BuildingFloorPlan(points: [
-            (0.08, 0.08), (0.92, 0.08), (0.92, 0.92), (0.08, 0.92),
-        ]),
     ]
 
     // Coordinates from OpenStreetMap Overpass API (building centroids)
@@ -132,7 +129,6 @@ enum MockData {
         Building(id: "krach",    name: "Krach Leadership Center",               abbreviation: "KRCH",  position: BuildingPosition(x: 70, y: 32), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 9, floorPlan: floorPlans["krach"]!,    latitude: 40.427580, longitude: -86.921270),
         Building(id: "heavilon", name: "Heavilon Hall",                         abbreviation: "HEAV",  position: BuildingPosition(x: 72, y: 44), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 0, floorPlan: floorPlans["heavilon"]!, latitude: 40.425800, longitude: -86.913800),
         Building(id: "stanley",  name: "Stanley Coulter Hall",                  abbreviation: "SC",    position: BuildingPosition(x: 40, y: 62), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 1, floorPlan: floorPlans["stanley"]!,  latitude: 40.426530, longitude: -86.914379),
-        Building(id: "rec",      name: "Recitation Building",                   abbreviation: "REC",   position: BuildingPosition(x: 56, y: 62), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 2, floorPlan: floorPlans["rec"]!,      latitude: 40.427000, longitude: -86.913900),
         Building(id: "krannert", name: "Krannert Building",                     abbreviation: "KRAN",  position: BuildingPosition(x: 80, y: 62), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 3, floorPlan: floorPlans["krannert"]!, latitude: 40.423693, longitude: -86.910956),
         Building(id: "stewart",  name: "Stewart Center",                        abbreviation: "STEW",  position: BuildingPosition(x: 38, y: 55), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 4, floorPlan: floorPlans["stewart"]!,  latitude: 40.425052, longitude: -86.912749),
         Building(id: "ee",       name: "Materials & Electrical Engineering",    abbreviation: "MSEE",  position: BuildingPosition(x: 50, y: 18), kingUserId: nil, kingName: nil, totalScore: 0, sessionsCount: 0, colorIndex: 5, floorPlan: floorPlans["ee"]!,       latitude: 40.429345, longitude: -86.912669),

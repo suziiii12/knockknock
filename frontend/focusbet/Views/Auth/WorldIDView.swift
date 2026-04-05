@@ -20,7 +20,7 @@ struct WorldIDView: View {
                             .foregroundStyle(AppColors.accent)
                     }
                     VStack(spacing: 8) {
-                        Text("FocusBet")
+                        Text("Lock In")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
                             .foregroundStyle(AppColors.textPrimary)
                         Text("AI-Powered Study Competition")
@@ -225,7 +225,7 @@ private struct SuccessContent: View {
             }
             Text("Verified!")
                 .font(.system(size: 22, weight: .bold)).foregroundStyle(AppColors.accent)
-            Text("Identity confirmed. Welcome to FocusBet.")
+            Text("Identity confirmed. Welcome to Lock In.")
                 .font(AppFonts.body).foregroundStyle(AppColors.textMuted)
         }
     }

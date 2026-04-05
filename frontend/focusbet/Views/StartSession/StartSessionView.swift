@@ -3,64 +3,65 @@ import SwiftUI
 struct StartSessionView: View {
     let onNavigate: (Route) -> Void
     @State private var selectedDuration: Int = 120
+    @State private var selectedBuildingId: String = "walc"
     @State private var locationService = LocationService()
     @State private var kingName: String? = nil
     private let durations = [1, 60, 120, 240] // 1 = 30s test mode
 
     private var building: Building {
-        locationService.detectedBuilding ?? MockData.buildings.first { $0.id == "walc" }!
+        MockData.buildings.first { $0.id == selectedBuildingId } ?? MockData.buildings[0]
     }
 
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
 
-            // GPS detection banner
-            HStack(spacing: 12) {
-                if locationService.isLocating {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(AppColors.warning)
-                        Text("Locating...")
+            // Building picker
+            VStack(spacing: 8) {
+                Text("Select Building")
+                    .font(AppFonts.heading)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                Picker("Building", selection: $selectedBuildingId) {
+                    ForEach(MockData.buildings) { b in
+                        Text(b.name).tag(b.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: 400)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(AppColors.bgSecondary)
+                .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard)
+                        .stroke(AppColors.border, lineWidth: 1)
+                )
+
+                if let king = kingName {
+                    HStack(spacing: 4) {
+                        Text("\u{1F451}")
+                            .font(.system(size: 12))
+                        Text("King: \(king)")
                             .font(AppFonts.caption)
                             .foregroundStyle(AppColors.warning)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(AppColors.warning.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
 
-                    Text("Defaulting to WALC")
-                        .font(AppFonts.heading)
-                        .foregroundStyle(AppColors.textSecondary)
-                } else {
+                // GPS status (secondary)
+                if locationService.isAuthorized, let detected = locationService.detectedBuilding {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(AppColors.accent)
-                            .frame(width: 8, height: 8)
-                        Text(locationService.isAuthorized ? "GPS Detected" : "GPS Off")
-                            .font(AppFonts.caption)
+                            .frame(width: 6, height: 6)
+                        Text("GPS: \(detected.abbreviation)")
+                            .font(AppFonts.small)
                             .foregroundStyle(AppColors.accent)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(AppColors.accent.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                    Text(building.name)
-                        .font(AppFonts.heading)
-                        .foregroundStyle(AppColors.textPrimary)
-
-                    if let king = kingName {
-                        HStack(spacing: 4) {
-                            Text("\u{1F451}")
-                                .font(.system(size: 12))
-                            Text("King: \(king)")
-                                .font(AppFonts.caption)
-                                .foregroundStyle(AppColors.warning)
-                        }
-                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
             }
 
@@ -144,8 +145,13 @@ struct StartSessionView: View {
         .onDisappear {
             locationService.stopUpdating()
         }
-        .task(id: building.id) {
-            kingName = await APIService.shared.fetchBuildingKing(buildingSlug: building.id)
+        .onChange(of: locationService.detectedBuilding?.id) { _, newId in
+            // Auto-select GPS-detected building
+            if let newId { selectedBuildingId = newId }
+        }
+        .task(id: selectedBuildingId) {
+            kingName = nil
+            kingName = await APIService.shared.fetchBuildingKing(buildingSlug: selectedBuildingId)
         }
     }
 }

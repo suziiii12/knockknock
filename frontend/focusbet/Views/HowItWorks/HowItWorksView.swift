@@ -4,7 +4,7 @@ struct HowItWorksView: View {
     let onNavigate: (Route) -> Void
 
     private let steps: [(emoji: String, title: String, description: String)] = [
-        ("\u{1F4CD}", "Check In", "Open FocusBet at any campus building. GPS automatically detects your location."),
+        ("\u{1F4CD}", "Check In", "Open Lock In at any campus building. GPS automatically detects your location."),
         ("\u{1F9E0}", "Start Studying", "Begin a focus session. AI monitors your concentration through webcam and screen analysis."),
         ("\u{1F4CA}", "Earn Points", "Your Building Score is calculated: Focus (50%) + Study Time (30%) + Consistency (20%)"),
         ("\u{1F451}", "Conquer Territory", "Top scorer at each building becomes the King. Territory resets every Monday."),
@@ -13,7 +13,7 @@ struct HowItWorksView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
-                Text("How FocusBet Works")
+                Text("How Lock In Works")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(AppColors.textPrimary)
                     .padding(.top, 40)

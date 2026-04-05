@@ -18,9 +18,10 @@ class HistoryViewModel {
         isLoading = true
         errorMessage = nil
         do {
-            sessions = try await APIService.shared.fetchSessionHistory()
+            let fetched = try await APIService.shared.fetchSessionHistory()
+            print("[HistoryViewModel] fetched \(fetched.count) sessions")
+            sessions = fetched
         } catch {
-            // Backend unavailable — fall back to MockData silently
             print("[HistoryViewModel] fetchSessionHistory error: \(error.localizedDescription)")
             if sessions.isEmpty {
                 sessions = MockData.sessionHistory

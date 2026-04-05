@@ -15,6 +15,11 @@ struct FocusBetApp: App {
                     // Restore JWT from Keychain on every launch so returning
                     // users skip the World ID flow if their token is still valid.
                     authViewModel.restoreAuthState()
+
+                    // TODO: remove after testing — dev auth bypass
+                    UserDefaults.standard.set(true, forKey: "isLoggedIn")
+                    UserDefaults.standard.set(true, forKey: "isProfileComplete")
+                    await APIService.shared.authenticateAsDevUser()
                 }
         }
         .windowStyle(.hiddenTitleBar)

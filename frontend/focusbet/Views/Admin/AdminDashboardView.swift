@@ -203,7 +203,7 @@ struct AdminDashboardView: View {
                 Image(systemName: "building.columns.fill")
                     .font(.system(size: 16))
                     .foregroundStyle(AppColors.accent)
-                Text("FocusBet Admin")
+                Text("Lock In Admin")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(AppColors.textPrimary)
             }
