@@ -163,6 +163,11 @@ def insert_score(record: ScoreRecord, path: Path = DB_PATH) -> int:
                 round(record.confidence, 4),
                 record.inferred_state,
                 round(record.body_engagement, 2),
+                round(record.mean_gaze, 4),
+                round(record.mean_head_yaw, 4),
+                round(record.mean_ear, 4),
+                round(record.mean_kpm, 4),
+                round(record.mean_posture, 4),
             ),
         )
         return cur.lastrowid
