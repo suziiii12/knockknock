@@ -29,6 +29,25 @@ def _active_session(user_id: int, db: Session) -> models.Session | None:
     )
 
 
+@router.get("/sessions/history")
+def get_session_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    sessions = (
+        db.query(models.Session)
+        .filter_by(user_id=current_user.id)
+        .filter(models.Session.ended_at.isnot(None))
+        .order_by(models.Session.started_at.desc())
+        .all()
+    )
+    logger.info("GET /sessions/history user=%d count=%d", current_user.id, len(sessions))
+    return success([
+        schemas.SessionOut.model_validate(s).model_dump(mode="json")
+        for s in sessions
+    ])
+
+
 @router.post("/sessions/start")
 def start_session(
     body: schemas.SoloSessionStart,

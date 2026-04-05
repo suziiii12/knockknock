@@ -4,10 +4,16 @@ import Foundation
 
 struct UserProfile {
     let id: Int
+    let name: String?
+    let school: String?
+    let major: String?
+    let year: String?
+    let gender: String?
     let sessionCount: Int
     let totalMinutes: Double
     let avgFocusScore: Double
     let totalScore: Double
+    let weeklyScore: Double
     let kingBuildingIds: [Int]
 }
 
@@ -49,6 +55,9 @@ actor APIService {
     static let shared = APIService()
     private init() {}
 
+    /// Set to true to skip all network calls and use MockData only (frontend dev mode).
+    static let useMockOnly = false
+
     private let baseURL = "http://127.0.0.1:8000"
     private var authToken: String?
 
@@ -56,6 +65,30 @@ actor APIService {
 
     func setToken(_ token: String) { authToken = token }
     func clearToken()              { authToken = nil }
+
+    /// DEV ONLY — creates/fetches the test user and sets the auth token automatically.
+    /// Call once on app launch during development to skip World ID auth.
+    func authenticateAsDevUser() async {
+        guard authToken == nil || authToken!.isEmpty else {
+            print("[APIService] DEV TOKEN already set — skipping")
+            return
+        }
+        guard let url = URL(string: "\(baseURL)/dev/create-test-user") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let token = json["token"] as? String {
+                authToken = token
+                print("[APIService] DEV TOKEN SET: \(token.prefix(20))… user_id=\(json["user_id"] ?? "?")")
+            } else {
+                print("[APIService] authenticateAsDevUser: unexpected response body")
+            }
+        } catch {
+            print("[APIService] authenticateAsDevUser failed: \(error.localizedDescription)")
+        }
+    }
 
     // MARK: - Private helpers
 
@@ -84,7 +117,10 @@ actor APIService {
         method: String = "GET",
         body: [String: Any]? = nil
     ) async throws -> T {
+        if Self.useMockOnly { throw APIError.serverError("Mock-only mode") }
+        print("[APIService] \(method) \(path) — token:\(authToken != nil ? "set" : "NIL ⚠️")")
         guard var req = makeRequest(path: path, method: method) else {
+            print("[APIService] ⚠️ bad URL for path: \(path)")
             throw APIError.badURL
         }
         if let body {
@@ -231,12 +267,23 @@ actor APIService {
         let raw = try await fetch(APIUserMe.self, path: "/users/me")
         return UserProfile(
             id: raw.id,
+            name: raw.name,
+            school: raw.school,
+            major: raw.major,
+            year: raw.year,
+            gender: raw.gender,
             sessionCount: raw.sessionCount,
             totalMinutes: raw.totalMinutes,
             avgFocusScore: raw.avgFocusScore,
             totalScore: raw.totalScore,
+            weeklyScore: raw.weeklyScore,
             kingBuildingIds: raw.kingBuildingIds
         )
+    }
+
+    /// Maps a backend building integer ID to the frontend slug used by MockData.
+    static func buildingSlug(for backendId: Int) -> String? {
+        buildingIdToSlug[backendId]
     }
 
     /// Returns the current user's weekly score for this week.
@@ -476,6 +523,12 @@ private struct APIProfileOut: Decodable {
 private struct APIUserMe: Decodable {
     let id: Int
     let nullifierHash: String
+    let name: String?
+    let school: String?
+    let major: String?
+    let year: String?
+    let expectedGraduation: String?
+    let gender: String?
     let sessionCount: Int
     let totalMinutes: Double
     let avgFocusScore: Double
@@ -484,14 +537,16 @@ private struct APIUserMe: Decodable {
     let kingBuildingIds: [Int]
     let createdAt: String?
     enum CodingKeys: String, CodingKey {
-        case id, createdAt = "created_at"
-        case nullifierHash   = "nullifier_hash"
-        case sessionCount    = "session_count"
-        case totalMinutes    = "total_minutes"
-        case avgFocusScore   = "avg_focus_score"
-        case totalScore      = "total_score"
-        case weeklyScore     = "weekly_score"
-        case kingBuildingIds = "king_building_ids"
+        case id, name, school, major, year, gender
+        case createdAt           = "created_at"
+        case nullifierHash       = "nullifier_hash"
+        case expectedGraduation  = "expected_graduation"
+        case sessionCount        = "session_count"
+        case totalMinutes        = "total_minutes"
+        case avgFocusScore       = "avg_focus_score"
+        case totalScore          = "total_score"
+        case weeklyScore         = "weekly_score"
+        case kingBuildingIds     = "king_building_ids"
     }
 }
 

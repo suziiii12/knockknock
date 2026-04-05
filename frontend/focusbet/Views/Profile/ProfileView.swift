@@ -1,20 +1,45 @@
 import SwiftUI
 
 struct ProfileView: View {
-    private let user = MockData.currentUser
+    @State private var profile: UserProfile? = nil
+    @State private var isLoading = true
     @State private var showEditSheet = false
     @State private var refreshID = UUID()
 
-    private var savedName: String { UserDefaults.standard.string(forKey: "userName") ?? user.name }
-    private var savedSchool: String { UserDefaults.standard.string(forKey: "userSchool") ?? "" }
-    private var savedMajor: String { UserDefaults.standard.string(forKey: "userMajor") ?? "" }
-    private var savedYear: String { UserDefaults.standard.string(forKey: "userYear") ?? "" }
-    private var savedGraduation: String { UserDefaults.standard.string(forKey: "userGraduation") ?? "" }
-    private var savedGender: String { UserDefaults.standard.string(forKey: "userGender") ?? "" }
+    // Profile text — prefer API data → UserDefaults → MockData fallback
+    private var displayName: String {
+        if let name = profile?.name, !name.isEmpty { return name }
+        return UserDefaults.standard.string(forKey: "userName") ?? MockData.currentUser.name
+    }
+    private var displaySchool: String {
+        if let v = profile?.school, !v.isEmpty { return v }
+        return UserDefaults.standard.string(forKey: "userSchool") ?? ""
+    }
+    private var displayMajor: String {
+        if let v = profile?.major, !v.isEmpty { return v }
+        return UserDefaults.standard.string(forKey: "userMajor") ?? ""
+    }
+    private var displayYear: String {
+        if let v = profile?.year, !v.isEmpty { return v }
+        return UserDefaults.standard.string(forKey: "userYear") ?? ""
+    }
+    private var displayGraduation: String {
+        UserDefaults.standard.string(forKey: "userGraduation") ?? ""
+    }
 
     private var userInitials: String {
-        let parts = savedName.split(separator: " ").prefix(2)
-        return parts.map { String($0.prefix(1)) }.joined().uppercased()
+        let parts = displayName.split(separator: " ").prefix(2)
+        let result = parts.map { String($0.prefix(1)) }.joined().uppercased()
+        return result.isEmpty ? MockData.currentUser.initials : result
+    }
+    private var colorIndex: Int {
+        profile.map { ($0.id - 1) % 10 } ?? MockData.currentUser.colorIndex
+    }
+    private var kingBuildings: [Building] {
+        profile?.kingBuildingIds.compactMap { id in
+            guard let slug = APIService.buildingSlug(for: id) else { return nil }
+            return MockData.buildings.first { $0.id == slug }
+        } ?? []
     }
 
     var body: some View {
@@ -22,9 +47,9 @@ struct ProfileView: View {
             VStack(spacing: 28) {
                 // 1. User info card
                 VStack(spacing: 16) {
-                    UserAvatar(initials: userInitials.isEmpty ? user.initials : userInitials, colorIndex: user.colorIndex, size: 72, showCrown: !user.kingBuildings.isEmpty)
+                    UserAvatar(initials: userInitials, colorIndex: colorIndex, size: 72, showCrown: !kingBuildings.isEmpty)
 
-                    Text(savedName)
+                    Text(displayName)
                         .font(AppFonts.title)
                         .foregroundStyle(AppColors.textPrimary)
 
@@ -41,12 +66,11 @@ struct ProfileView: View {
                     .background(AppColors.accent.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                    // Profile details
                     VStack(spacing: 8) {
-                        if !savedSchool.isEmpty { profileInfoRow("School", savedSchool) }
-                        if !savedMajor.isEmpty { profileInfoRow("Major", savedMajor) }
-                        if !savedYear.isEmpty { profileInfoRow("Year", savedYear) }
-                        if !savedGraduation.isEmpty { profileInfoRow("Graduation", savedGraduation) }
+                        if !displaySchool.isEmpty     { profileInfoRow("School",     displaySchool) }
+                        if !displayMajor.isEmpty      { profileInfoRow("Major",      displayMajor) }
+                        if !displayYear.isEmpty       { profileInfoRow("Year",       displayYear) }
+                        if !displayGraduation.isEmpty { profileInfoRow("Graduation", displayGraduation) }
                     }
                     .padding(.horizontal, 60)
                 }
@@ -73,21 +97,29 @@ struct ProfileView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .sheet(isPresented: $showEditSheet, onDismiss: { refreshID = UUID() }) {
+                .sheet(isPresented: $showEditSheet, onDismiss: {
+                    refreshID = UUID()
+                    Task { await loadProfile() }
+                }) {
                     EditProfileView()
                 }
 
                 // 3. Stats grid
+                let sessionCount = profile?.sessionCount ?? MockData.currentUser.totalSessions
+                let totalHours   = (profile?.totalMinutes ?? (MockData.currentUser.totalHours * 60)) / 60.0
+                let avgScore     = Int((profile?.avgFocusScore ?? Double(MockData.currentUser.avgFocusScore)).rounded())
+                let weeklyPts    = Int((profile?.weeklyScore ?? Double(MockData.currentUser.totalScore)).rounded())
+
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: 12),
                     GridItem(.flexible(), spacing: 12),
                     GridItem(.flexible(), spacing: 12),
                     GridItem(.flexible(), spacing: 12),
                 ], spacing: 12) {
-                    ProfileStat(label: "Total Sessions", value: "\(user.totalSessions)")
-                    ProfileStat(label: "Total Hours", value: user.totalHours.oneDecimal)
-                    ProfileStat(label: "Avg Score", value: "\(user.avgFocusScore)")
-                    ProfileStat(label: "Weekly Pts", value: "\(user.totalScore)pts")
+                    ProfileStat(label: "Total Sessions", value: "\(sessionCount)")
+                    ProfileStat(label: "Total Hours",    value: totalHours.oneDecimal)
+                    ProfileStat(label: "Avg Score",      value: "\(avgScore)")
+                    ProfileStat(label: "Weekly Pts",     value: "\(weeklyPts)pts")
                 }
                 .padding(.horizontal, 40)
 
@@ -106,36 +138,34 @@ struct ProfileView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                     }
 
-                    if user.kingBuildings.isEmpty {
+                    if kingBuildings.isEmpty {
                         Text("No buildings claimed this week")
                             .font(AppFonts.body)
                             .foregroundStyle(AppColors.textMuted)
                     } else {
-                        ForEach(user.kingBuildings, id: \.self) { buildingId in
-                            if let building = MockData.buildings.first(where: { $0.id == buildingId }) {
-                                HStack(spacing: 12) {
-                                    Text("\u{1F451}")
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(building.name)
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundStyle(AppColors.textPrimary)
-                                        Text("King - \(building.totalScore.formattedWithCommas)pts")
-                                            .font(AppFonts.caption)
-                                            .foregroundStyle(AppColors.accent)
-                                    }
-                                    Spacer()
+                        ForEach(kingBuildings, id: \.id) { building in
+                            HStack(spacing: 12) {
+                                Text("\u{1F451}")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(building.name)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(AppColors.textPrimary)
+                                    Text("King this week")
+                                        .font(AppFonts.caption)
+                                        .foregroundStyle(AppColors.accent)
                                 }
-                                .padding(12)
-                                .background(AppColors.bgTertiary)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Spacer()
                             }
+                            .padding(12)
+                            .background(AppColors.bgTertiary)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)
 
-                // 5. Past weeks
+                // 5. Past weeks — no backend endpoint yet, using MockData
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Past Weeks")
                         .font(AppFonts.heading)
@@ -166,7 +196,7 @@ struct ProfileView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 40)
 
-                // 6. This Week's Scores by Building
+                // 6. This Week's Scores by Building — MockData until per-building endpoint exists
                 VStack(alignment: .leading, spacing: 12) {
                     Text("This Week's Scores")
                         .font(AppFonts.heading)
@@ -204,7 +234,7 @@ struct ProfileView: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppColors.textMuted)
                         Spacer()
-                        Text("\(user.totalScore)pts")
+                        Text("\(weeklyPts)pts")
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(AppColors.accent)
                     }
@@ -241,7 +271,30 @@ struct ProfileView: View {
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+        .task { await loadProfile() }
     }
+
+    // MARK: - Data fetching
+
+    private func loadProfile() async {
+        isLoading = true
+        do {
+            let fetched = try await APIService.shared.fetchUserProfile()
+            profile = fetched
+            // Mirror to UserDefaults so EditProfileView always pre-fills correctly
+            if let name = fetched.name,   !name.isEmpty   { UserDefaults.standard.set(name,   forKey: "userName") }
+            if let school = fetched.school, !school.isEmpty { UserDefaults.standard.set(school, forKey: "userSchool") }
+            if let major = fetched.major,  !major.isEmpty  { UserDefaults.standard.set(major,  forKey: "userMajor") }
+            if let year = fetched.year,   !year.isEmpty   { UserDefaults.standard.set(year,   forKey: "userYear") }
+            if let gender = fetched.gender, !gender.isEmpty { UserDefaults.standard.set(gender, forKey: "userGender") }
+        } catch {
+            print("[ProfileView] loadProfile error: \(error.localizedDescription)")
+            // profile stays nil — computed props fall back to UserDefaults / MockData
+        }
+        isLoading = false
+    }
+
+    // MARK: - Sub-views
 
     private func profileInfoRow(_ label: String, _ value: String) -> some View {
         HStack {

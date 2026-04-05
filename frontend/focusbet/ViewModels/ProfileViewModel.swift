@@ -37,11 +37,11 @@ class ProfileViewModel {
                     name:             savedName.isEmpty ? user.name : savedName,
                     initials:         initials.isEmpty ? user.initials : initials,
                     colorIndex:       user.colorIndex,
-                    totalScore:       Int(profile.totalScore),
+                    totalScore:       Int(profile.weeklyScore),
                     totalSessions:    profile.sessionCount,
                     totalHours:       Double(profile.totalMinutes) / 60.0,
                     avgFocusScore:    Int(profile.avgFocusScore),
-                    kingBuildings:    user.kingBuildings,   // string slugs — kept from mock until backend stores them
+                    kingBuildings:    user.kingBuildings,
                     isDeviceVerified: user.isDeviceVerified
                 )
             } catch APIError.unauthorized {

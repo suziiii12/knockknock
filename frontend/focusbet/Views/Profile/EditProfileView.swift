@@ -92,12 +92,25 @@ struct EditProfileView: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        UserDefaults.standard.set(name.trimmingCharacters(in: .whitespaces), forKey: "userName")
-                        UserDefaults.standard.set(school, forKey: "userSchool")
-                        UserDefaults.standard.set(major, forKey: "userMajor")
-                        UserDefaults.standard.set(year, forKey: "userYear")
-                        UserDefaults.standard.set(graduation, forKey: "userGraduation")
-                        UserDefaults.standard.set(gender, forKey: "userGender")
+                        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+                        // Save to UserDefaults immediately so UI updates without waiting for the network
+                        UserDefaults.standard.set(trimmedName,  forKey: "userName")
+                        UserDefaults.standard.set(school,       forKey: "userSchool")
+                        UserDefaults.standard.set(major,        forKey: "userMajor")
+                        UserDefaults.standard.set(year,         forKey: "userYear")
+                        UserDefaults.standard.set(graduation,   forKey: "userGraduation")
+                        UserDefaults.standard.set(gender,       forKey: "userGender")
+                        // Persist to backend in the background
+                        Task {
+                            do {
+                                try await APIService.shared.saveProfile(
+                                    name: trimmedName, school: school, major: major,
+                                    year: year, expectedGraduation: graduation, gender: gender
+                                )
+                            } catch {
+                                print("[EditProfileView] saveProfile error: \(error.localizedDescription)")
+                            }
+                        }
                         dismiss()
                     } label: {
                         Text("Save Changes")

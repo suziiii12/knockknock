@@ -69,6 +69,12 @@ def get_me(
     return success({
         "id":               current_user.id,
         "nullifier_hash":   current_user.world_id_nullifier_hash,
+        "name":             current_user.name,
+        "school":           current_user.school,
+        "major":            current_user.major,
+        "year":             current_user.year,
+        "expected_graduation": current_user.expected_graduation,
+        "gender":           current_user.gender,
         "session_count":    session_count,
         "total_minutes":    total_minutes,
         "avg_focus_score":  avg_focus_score,

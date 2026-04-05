@@ -9,7 +9,7 @@ struct HomeView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.014, longitudeDelta: 0.014)
     ))
 
-    private let leaderboard: [(rank: Int, name: String, initials: String, colorIndex: Int, score: Int, kingCount: Int, isYou: Bool)] = [
+    @State private var leaderboard: [(rank: Int, name: String, initials: String, colorIndex: Int, score: Int, kingCount: Int, isYou: Bool)] = [
         (1, "Yewon", "YC", 0, 4820, 3, true),
         (2, "NakJun", "NJ", 1, 4210, 2, false),
         (3, "Suji", "SJ", 2, 3890, 2, false),
@@ -41,6 +41,43 @@ struct HomeView: View {
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+        .task { await loadLeaderboard() }
+    }
+
+    // MARK: - Data fetching
+
+    private func loadLeaderboard() async {
+        guard let url = URL(string: "http://127.0.0.1:8000/leaderboard/global") else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            struct Entry: Decodable {
+                let rank: Int
+                let user_id: Int
+                let name: String
+                let score: Int
+                let king_count: Int
+            }
+            struct Envelope: Decodable {
+                let success: Bool
+                let data: [Entry]
+            }
+            let envelope = try JSONDecoder().decode(Envelope.self, from: data)
+            guard envelope.success, !envelope.data.isEmpty else { return }
+            leaderboard = envelope.data.map { e in
+                (
+                    rank: e.rank,
+                    name: e.name,
+                    initials: String(e.name.prefix(2)).uppercased(),
+                    colorIndex: (e.user_id - 1) % 10,
+                    score: e.score,
+                    kingCount: e.king_count,
+                    isYou: false
+                )
+            }
+        } catch {
+            // Backend unavailable — keep mock data
+            print("[HomeView] loadLeaderboard error: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Section 1: Hero

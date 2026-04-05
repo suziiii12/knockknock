@@ -23,7 +23,7 @@ import models
 import schemas
 from auth import verify_world_id_proof, create_access_token
 from responses import success
-from routers import sessions, checkin, buildings, users
+from routers import sessions, checkin, buildings, users, admin
 
 
 _REQUIRED_ENV_VARS = [
@@ -91,11 +91,119 @@ app.include_router(sessions.router)
 app.include_router(checkin.router)
 app.include_router(buildings.router)
 app.include_router(users.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")
 def health():
     return success({"status": "ok"})
+
+
+@app.get("/leaderboard/global")
+def get_global_leaderboard(db: Session = Depends(get_db)):
+    """Top 10 students by weekly score — no auth required."""
+    from datetime import date
+    from sqlalchemy import func
+
+    today = date.today()
+    month = today.year * 100 + today.month
+    week = (today.day - 1) // 7 + 1
+
+    rows = (
+        db.query(models.WeeklyScore, models.User)
+        .join(models.User, models.WeeklyScore.user_id == models.User.id)
+        .filter(models.WeeklyScore.month == month, models.WeeklyScore.week == week)
+        .order_by(models.WeeklyScore.weekly_score.desc())
+        .limit(10)
+        .all()
+    )
+
+    if not rows:
+        return success([])
+
+    # Per-building king = user with highest total_score in Territory
+    max_sub = (
+        db.query(
+            models.Territory.building_id,
+            func.max(models.Territory.total_score).label("max_score"),
+        )
+        .group_by(models.Territory.building_id)
+        .subquery()
+    )
+    king_rows = (
+        db.query(models.Territory.user_id, func.count().label("king_count"))
+        .join(
+            max_sub,
+            (models.Territory.building_id == max_sub.c.building_id)
+            & (models.Territory.total_score == max_sub.c.max_score),
+        )
+        .group_by(models.Territory.user_id)
+        .all()
+    )
+    king_counts = {r.user_id: r.king_count for r in king_rows}
+
+    result = []
+    for rank, (ws, user) in enumerate(rows, start=1):
+        result.append({
+            "rank": rank,
+            "user_id": user.id,
+            "name": user.name or f"User {user.id}",
+            "score": int(ws.weekly_score or 0),
+            "king_count": king_counts.get(user.id, 0),
+        })
+
+    logger.info("GET /leaderboard/global — %d entries", len(result))
+    return success(result)
+
+
+# ============ DEV/TEST ENDPOINTS — remove before production ============
+
+@app.post("/dev/create-test-user")
+def create_test_user(db: Session = Depends(get_db)):
+    """Create a test user and return a JWT token — DEV ONLY."""
+    test_hash = "dev_test_user_nullifier_hash"
+    user = db.query(models.User).filter_by(world_id_nullifier_hash=test_hash).first()
+    if not user:
+        user = models.User(
+            world_id_nullifier_hash=test_hash,
+            name="Test User",
+            school="Purdue University",
+            major="Computer Science",
+            year="Junior",
+            gender="Prefer not to say",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    token = create_access_token(user.id)
+    user.jwt_token = token
+    db.commit()
+    logger.info("Dev test user: id=%d token issued", user.id)
+    return {"token": token, "user_id": user.id}
+
+
+@app.get("/dev/sessions")
+def dev_get_all_sessions(db: Session = Depends(get_db)):
+    """List all sessions (no auth) — DEV ONLY."""
+    rows = (
+        db.query(models.Session)
+        .order_by(models.Session.started_at.desc())
+        .limit(50)
+        .all()
+    )
+    return [
+        {
+            "id":          s.id,
+            "user_id":     s.user_id,
+            "building_id": s.building_id,
+            "duration":    s.duration,
+            "final_score": s.final_score,
+            "started_at":  s.started_at.isoformat() if s.started_at else None,
+            "ended_at":    s.ended_at.isoformat()   if s.ended_at   else None,
+        }
+        for s in rows
+    ]
 
 
 @app.post("/auth/verify-world-id")

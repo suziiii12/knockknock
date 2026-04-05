@@ -187,10 +187,17 @@ struct BuildingDetailView: View {
             let (data, _) = try await URLSession.shared.data(for: request)
             guard
                 let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let elements = json["elements"] as? [[String: Any]],
-                let first = elements.first,
-                let geometry = first["geometry"] as? [[String: Any]]
+                let elements = json["elements"] as? [[String: Any]]
             else { return nil }
+
+            // Pick the largest polygon by node count — handles complex buildings (e.g. L-shaped WALC)
+            var bestGeometry: [[String: Any]] = []
+            for element in elements {
+                guard let geometry = element["geometry"] as? [[String: Any]] else { continue }
+                if geometry.count > bestGeometry.count { bestGeometry = geometry }
+            }
+            guard !bestGeometry.isEmpty else { return nil }
+            let geometry = bestGeometry
 
             let coords: [(Double, Double)] = geometry.compactMap { node in
                 guard let nodeLat = node["lat"] as? Double,
