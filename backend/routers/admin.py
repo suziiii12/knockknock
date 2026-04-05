@@ -26,6 +26,24 @@ def _week_start() -> datetime:
     return (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+@router.get("/users")
+def admin_users(db: Session = Depends(get_db)):
+    """List all users (admin only)."""
+    users = db.query(models.User).order_by(models.User.id).all()
+    return success([
+        {
+            "id": u.id,
+            "name": u.name,
+            "school": u.school,
+            "major": u.major,
+            "year": u.year,
+            "nullifier_hash": u.world_id_nullifier_hash[:20] + "..." if u.world_id_nullifier_hash else None,
+            "created_at": str(u.created_at),
+        }
+        for u in users
+    ])
+
+
 @router.get("/overview")
 def admin_overview(db: Session = Depends(get_db)):
     """Platform KPIs for the current week."""

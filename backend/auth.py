@@ -46,20 +46,52 @@ async def verify_world_id_proof(proof_payload: dict) -> Optional[str]:
         logger.warning("Dev mode: WORLD_ID_APP_ID not set or 'dev', skipping World ID verification")
         return nullifier_hash or None
 
-    url = f"{WORLD_ID_VERIFY_URL}/{WORLD_ID_APP_ID}"
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=proof_payload, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            nullifier_hash = data.get("nullifier_hash")
-            logger.info("World ID v4 proof verified, nullifier=%s", nullifier_hash)
-            return nullifier_hash
-        logger.warning("World ID v4 verification failed: %s %s", resp.status_code, resp.text)
-        return None
-    except Exception as exc:
-        logger.error("World ID v4 verification error: %s", exc)
-        return None
+    # World ID v4 verify API format for IDKit v3 (legacy) proofs
+    action = proof_payload.get("action", "")
+    verification_level = proof_payload.get("verification_level", "orb")
+    # signal_hash: keccak256 of empty string (default when no signal)
+    signal_hash = "0x00c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4"
+
+    v4_payload = {
+        "protocol_version": "3.0",
+        "action": action,
+        "nonce": nullifier_hash,
+        "responses": [
+            {
+                "identifier": verification_level,
+                "nullifier": nullifier_hash,
+                "merkle_root": proof_payload.get("merkle_root", ""),
+                "proof": proof_payload.get("proof", ""),
+                "signal_hash": signal_hash,
+            }
+        ],
+    }
+
+    # Try rp_id first, then app_id
+    rp_id = os.getenv("WORLD_ID_RP_ID", "")
+    verify_ids = [rp_id, WORLD_ID_APP_ID] if rp_id else [WORLD_ID_APP_ID]
+
+    for verify_id in verify_ids:
+        if not verify_id:
+            continue
+        url = f"{WORLD_ID_VERIFY_URL}/{verify_id}"
+        try:
+            logger.info("Verifying World ID proof at %s", url)
+            import json as _json
+            logger.info("Full v4 payload: %s", _json.dumps(v4_payload, indent=2)[:500])
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(url, json=v4_payload, timeout=10)
+            logger.info("World ID verify response: %s %s", resp.status_code, resp.text[:300])
+            if resp.status_code == 200:
+                data = resp.json()
+                nullifier_hash = data.get("nullifier_hash", nullifier_hash)
+                logger.info("World ID proof verified, nullifier=%s", nullifier_hash)
+                return nullifier_hash
+        except Exception as exc:
+            logger.error("World ID verification error with %s: %s", verify_id, exc)
+
+    logger.warning("World ID verification failed with all IDs")
+    return None
 
 
 def create_access_token(user_id: int) -> str:
