@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @Environment(AuthViewModel.self) private var authViewModel
     @State private var profile: UserProfile? = nil
     @State private var isLoading = true
     @State private var showEditSheet = false
@@ -245,8 +246,7 @@ struct ProfileView: View {
 
                 // 7. Log Out
                 Button {
-                    UserDefaults.standard.set(false, forKey: "isLoggedIn")
-                    UserDefaults.standard.set(false, forKey: "isProfileComplete")
+                    authViewModel.logout()
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")

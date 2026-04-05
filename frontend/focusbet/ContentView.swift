@@ -19,17 +19,26 @@ struct ContentView: View {
     @AppStorage("isProfileComplete") private var isProfileComplete = false
     @AppStorage("isAdmin") private var isAdmin = false
 
+    @State private var showWorldID = false
+
     var body: some View {
         Group {
             if isAdmin {
                 AdminDashboardView()
             } else if !isLoggedIn {
-                WorldIDView()
+                if showWorldID {
+                    WorldIDView()
+                } else {
+                    WelcomeView(onSignIn: { showWorldID = true })
+                }
             } else if !isProfileComplete {
                 ProfileSetupView()
             } else {
                 MainAppView()
             }
+        }
+        .onChange(of: isLoggedIn) { _, loggedIn in
+            if !loggedIn { showWorldID = false }
         }
     }
 }

@@ -86,6 +86,7 @@ final class AuthViewModel {
         currentUserId = extractUserId(from: token)
         Task { await APIService.shared.setToken(token) }
         UserDefaults.standard.set(true, forKey: "isLoggedIn")
+        UserDefaults.standard.set(true, forKey: "isProfileComplete")
         isAuthenticated = true
     }
 

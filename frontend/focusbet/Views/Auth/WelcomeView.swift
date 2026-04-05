@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WelcomeView: View {
     var onSignIn: () -> Void
-    @State private var showAdminLogin = true
+    @State private var showAdminLogin = false
 
     var body: some View {
         VStack(spacing: 0) {
