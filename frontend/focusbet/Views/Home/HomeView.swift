@@ -193,8 +193,9 @@ struct HomeView: View {
             }
 
             HStack(spacing: 16) {
-                // Left: Map
+                // Left: Map — all annotations inlined to avoid MapContentBuilder ambiguity
                 Map(position: $cameraPosition) {
+                    // "You are here" dot
                     Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
                         ZStack {
                             Circle()
@@ -207,7 +208,7 @@ struct HomeView: View {
                         }
                         .allowsHitTesting(false)
                     }
-
+                    // Building markers
                     ForEach(MockData.buildings) { building in
                         Annotation("", coordinate: building.coordinate, anchor: .center) {
                             Button {

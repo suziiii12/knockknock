@@ -9,11 +9,48 @@ struct CampusMapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.014, longitudeDelta: 0.014)
     ))
 
+    /// Backend-fetched king data keyed by building slug.
+    @State private var buildingKings: [String: (kingName: String, kingScore: Int)] = [:]
+
     private var resetTimeString: String {
         let hours = Int(MockData.weekResetTimeInterval / 3600)
         let days = hours / 24
         let remainingHours = hours % 24
         return "\(days)d \(remainingHours)h"
+    }
+
+    /// Merge MockData buildings with live king data from the backend.
+    /// Buildings without backend data show as unclaimed (gray) — MockData kings are ignored.
+    private var buildings: [Building] {
+        MockData.buildings.map { b in
+            var updated = b
+            if let king = buildingKings[b.id] {
+                updated.kingName = king.kingName
+                updated.kingUserId = king.kingName   // non-nil signals "claimed"
+            } else {
+                // No backend data → force unclaimed regardless of MockData
+                updated.kingName = nil
+                updated.kingUserId = nil
+            }
+            return updated
+        }
+    }
+
+    /// Legend entries: users who are currently kings of at least one building.
+    private var legendEntries: [(name: String, count: Int, color: Color)] {
+        var counts: [String: Int] = [:]
+        for (_, king) in buildingKings {
+            counts[king.kingName, default: 0] += 1
+        }
+        return counts
+            .sorted { $0.value > $1.value }
+            .prefix(5)
+            .enumerated()
+            .map { idx, pair in
+                (name: pair.key,
+                 count: pair.value,
+                 color: AppColors.userColors[idx % AppColors.userColors.count])
+            }
     }
 
     var body: some View {
@@ -48,26 +85,54 @@ struct CampusMapView: View {
                 AppColors.border.frame(height: 1)
             }
 
-            // Apple MapKit Map
+            // Apple MapKit Map — annotations inlined to avoid MapContentBuilder/ChartContentBuilder ambiguity
             Map(position: $cameraPosition) {
-                youAreHereMarker
-                buildingAnnotations()
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
+                    VStack(spacing: 2) {
+                        ZStack {
+                            Circle()
+                                .fill(AppColors.accent.opacity(0.3))
+                                .frame(width: 24, height: 24)
+                            Circle()
+                                .fill(AppColors.accent)
+                                .frame(width: 12, height: 12)
+                                .overlay(Circle().stroke(.white, lineWidth: 2))
+                        }
+                        Text("You are here")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(AppColors.accent)
+                    }
+                    .allowsHitTesting(false)
+                }
+                ForEach(buildings) { building in
+                    Annotation("", coordinate: building.coordinate, anchor: .center) {
+                        Button {
+                            onNavigate(.building(id: building.id))
+                        } label: {
+                            BuildingMarkerView(building: building)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
 
             // Legend
             HStack(spacing: 16) {
-                ForEach(MockData.users.prefix(5)) { user in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(user.color)
-                            .frame(width: 8, height: 8)
-                        Text(user.name)
-                            .font(AppFonts.small)
-                            .foregroundStyle(AppColors.textSecondary)
-                        Text("\(user.kingBuildings.count)")
-                            .font(AppFonts.small)
-                            .foregroundStyle(AppColors.textMuted)
+                if !legendEntries.isEmpty {
+                    ForEach(legendEntries.indices, id: \.self) { idx in
+                        let entry = legendEntries[idx]
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(entry.color)
+                                .frame(width: 8, height: 8)
+                            Text(entry.name)
+                                .font(AppFonts.small)
+                                .foregroundStyle(AppColors.textSecondary)
+                            Text("\(entry.count)")
+                                .font(AppFonts.small)
+                                .foregroundStyle(AppColors.textMuted)
+                        }
                     }
                 }
                 HStack(spacing: 6) {
@@ -88,44 +153,19 @@ struct CampusMapView: View {
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+        .task { await loadBuildingKings() }
     }
 
-    // Explicit @MapContentBuilder helpers avoid result-builder ambiguity with ChartContentBuilder
+    // MARK: - Data fetching
 
-    @MapContentBuilder
-    private var youAreHereMarker: some MapContent {
-        Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
-            VStack(spacing: 2) {
-                ZStack {
-                    Circle()
-                        .fill(AppColors.accent.opacity(0.3))
-                        .frame(width: 24, height: 24)
-                    Circle()
-                        .fill(AppColors.accent)
-                        .frame(width: 12, height: 12)
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
-                }
-                Text("You are here")
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(AppColors.accent)
-            }
-            .allowsHitTesting(false)
+    private func loadBuildingKings() async {
+        let kings = await APIService.shared.fetchBuildingKings()
+        if !kings.isEmpty {
+            buildingKings = kings
         }
+        // If empty (backend down), buildings stays unmodified → MockData kings shown
     }
 
-    @MapContentBuilder
-    private func buildingAnnotations() -> some MapContent {
-        ForEach(MockData.buildings) { building in
-            Annotation("", coordinate: building.coordinate, anchor: .center) {
-                Button {
-                    onNavigate(.building(id: building.id))
-                } label: {
-                    BuildingMarkerView(building: building)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
 }
 
 // MARK: - Building marker annotation view

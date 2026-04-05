@@ -13,6 +13,33 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/buildings", tags=["buildings"])
 
 
+@router.get("")
+def get_all_buildings(db: Session = Depends(get_db)):
+    """All buildings with their current King (highest territory total_score)."""
+    buildings = db.query(models.Building).all()
+
+    # For each building, find the user with the highest territory total_score
+    results = []
+    for b in buildings:
+        top = (
+            db.query(models.Territory, models.User)
+            .join(models.User, models.Territory.user_id == models.User.id)
+            .filter(models.Territory.building_id == b.id)
+            .order_by(models.Territory.total_score.desc())
+            .first()
+        )
+        results.append({
+            "id": b.id,
+            "name": b.name,
+            "king_user_id": top[1].id if top else None,
+            "king_name": top[1].name if top else None,
+            "king_score": int(top[0].total_score) if top else 0,
+        })
+
+    logger.info("GET /buildings — %d buildings", len(results))
+    return success(results)
+
+
 @router.get("/{building_id}/leaderboard")
 def get_building_leaderboard(
     building_id: int,

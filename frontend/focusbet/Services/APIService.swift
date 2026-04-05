@@ -171,6 +171,22 @@ actor APIService {
         return top.userName ?? "User #\(top.userId)"
     }
 
+    /// Fetches all buildings with their current King from GET /buildings.
+    /// Returns a dict mapping frontend slug → (kingName, kingScore).
+    func fetchBuildingKings() async -> [String: (kingName: String, kingScore: Int)] {
+        guard let entries = try? await fetch(
+            [APIBuildingEntry].self,
+            path: "/buildings"
+        ) else { return [:] }
+        var result: [String: (kingName: String, kingScore: Int)] = [:]
+        for entry in entries {
+            guard let slug = Self.buildingIdToSlug[entry.id],
+                  let name = entry.kingName else { continue }
+            result[slug] = (kingName: name, kingScore: entry.kingScore)
+        }
+        return result
+    }
+
     // MARK: - Territory / Leaderboard
 
     /// Fetches real territory rankings from the backend and maps them to TerritoryEntry.
@@ -232,7 +248,6 @@ actor APIService {
         "krach":   13,
         "heavilon": 14,
         "stanley": 15,
-        "rec":     16,
         "krannert": 17,
         "stewart": 18,
         "ee":      19,
@@ -296,14 +311,17 @@ actor APIService {
     // MARK: - Session history
 
     func fetchSessionHistory() async throws -> [StudySession] {
-        // Falls back to MockData until backend exposes GET /sessions/history
         do {
             let entries = try await fetch([APISessionHistoryEntry].self, path: "/sessions/history")
+            print("[APIService] fetchSessionHistory: got \(entries.count) entries")
             return entries.compactMap { entry in
                 guard let endedAt = entry.endedAt,
-                      let startDate = ISO8601DateFormatter().date(from: entry.startedAt),
-                      let endDate = ISO8601DateFormatter().date(from: endedAt) else { return nil }
-                let durationMinutes = Int(endDate.timeIntervalSince(startDate) / 60)
+                      let startDate = Self.parseDate(entry.startedAt),
+                      let endDate = Self.parseDate(endedAt) else {
+                    print("[APIService] skipping entry \(entry.id): date parse failed (started=\(entry.startedAt) ended=\(entry.endedAt ?? "nil"))")
+                    return nil
+                }
+                let durationMinutes = max(1, Int(endDate.timeIntervalSince(startDate) / 60))
                 let score = Int(entry.finalScore ?? 0)
                 let buildingSlug = Self.buildingIdToSlug[entry.buildingId ?? 0] ?? "unknown"
                 let buildingAbbr = MockData.buildings.first(where: { $0.id == buildingSlug })?.abbreviation ?? buildingSlug.uppercased()
@@ -322,8 +340,28 @@ actor APIService {
                 )
             }
         } catch {
+            print("[APIService] fetchSessionHistory error: \(error)")
             return MockData.sessionHistory
         }
+    }
+
+    /// Parses dates from the backend: "2026-04-05T05:32:34.475256" (ISO8601 with fractional seconds, no timezone).
+    private static func parseDate(_ string: String) -> Date? {
+        // Try with fractional seconds first
+        let isoFrac = ISO8601DateFormatter()
+        isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoFrac.date(from: string + "Z") { return date }
+        if let date = isoFrac.date(from: string) { return date }
+        // Try without fractional seconds
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: string + "Z") { return date }
+        if let date = iso.date(from: string) { return date }
+        // Fallback: DateFormatter for space-separated format from raw DB
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSSS"
+        df.timeZone = TimeZone(identifier: "UTC")
+        return df.date(from: string)
     }
 
     // MARK: - Sessions
@@ -447,6 +485,20 @@ private struct APILeaderboardEntry: Decodable {
         case userId      = "user_id"
         case userName    = "user_name"
         case totalScore  = "total_score"
+    }
+}
+
+private struct APIBuildingEntry: Decodable {
+    let id: Int
+    let name: String
+    let kingUserId: Int?
+    let kingName: String?
+    let kingScore: Int
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case kingUserId = "king_user_id"
+        case kingName   = "king_name"
+        case kingScore  = "king_score"
     }
 }
 

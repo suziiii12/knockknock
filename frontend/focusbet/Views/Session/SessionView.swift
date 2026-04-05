@@ -184,18 +184,22 @@ struct SessionView: View {
 
         // Countdown
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if remainingSeconds > 0 {
-                remainingSeconds -= 1
-            } else {
-                stopSession()
-                onNavigate(.result(focusScore: vm.focusScore, buildingId: buildingId, duration: duration))
+            Task { @MainActor in
+                if remainingSeconds > 0 {
+                    remainingSeconds -= 1
+                } else {
+                    stopSession()
+                    onNavigate(.result(focusScore: vm.focusScore, buildingId: buildingId, duration: duration))
+                }
             }
         }
 
         // Read signals from FocusTrackingService every 5s
         scoreTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-            withAnimation {
-                vm.updateScores(from: focusTracking.currentScores)
+            Task { @MainActor in
+                withAnimation {
+                    vm.updateScores(from: focusTracking.currentScores)
+                }
             }
         }
 
