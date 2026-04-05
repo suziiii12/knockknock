@@ -1,5 +1,7 @@
 import logging
 import os
+import secrets
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, Request, status
@@ -204,6 +206,45 @@ def dev_get_all_sessions(db: Session = Depends(get_db)):
         }
         for s in rows
     ]
+
+
+@app.get("/auth/create-session")
+async def create_session():
+    """Return rpContext data for IDKit v2 World ID flow.
+
+    In dev mode (WORLD_ID_APP_ID unset / 'dev'), signature is empty and
+    the frontend falls back to the test_ stub. In production, set
+    WORLD_ID_PRIVATE_KEY (PEM, ECDSA P-256 from the Worldcoin Developer Portal)
+    to produce a real signature.
+    """
+    app_id = os.getenv("WORLD_ID_APP_ID", "dev")
+    rp_id  = os.getenv("WORLD_ID_RP_ID", "focusbet")
+    nonce      = secrets.token_hex(16)
+    created_at = int(time.time())
+    expires_at = created_at + 600  # 10 minutes
+
+    private_key_pem = os.getenv("WORLD_ID_PRIVATE_KEY", "")
+    signature = ""
+    if private_key_pem:
+        try:
+            from cryptography.hazmat.primitives import hashes, serialization
+            from cryptography.hazmat.primitives.asymmetric import ec
+            import base64
+            message = f"{nonce}:{created_at}:{expires_at}".encode()
+            key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
+            sig = key.sign(message, ec.ECDSA(hashes.SHA256()))
+            signature = base64.b64encode(sig).decode()
+        except Exception as exc:
+            logger.warning("rpContext signing failed: %s", exc)
+
+    return success({
+        "app_id":     app_id,
+        "rp_id":      rp_id,
+        "nonce":      nonce,
+        "created_at": created_at,
+        "expires_at": expires_at,
+        "signature":  signature,
+    })
 
 
 @app.post("/auth/verify-world-id")
