@@ -292,6 +292,7 @@ class TribeAnalysisService {
 
         var body = Data()
         let videoData = try Data(contentsOf: clipURL)
+        print("[tribe] Video file: \(clipURL.lastPathComponent) size=\(videoData.count) bytes")
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"video\"; filename=\"clip.mp4\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
@@ -302,9 +303,12 @@ class TribeAnalysisService {
         print("[tribe] Sending \(videoData.count) bytes to \(serverURL)/analyze")
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            print("[tribe] Server returned HTTP \(code)")
+        let http = response as? HTTPURLResponse
+        let statusCode = http?.statusCode ?? -1
+        print("[tribe] TRIBE response: HTTP \(statusCode), \(data.count) bytes")
+        if statusCode != 200 {
+            let responseBody = String(data: data, encoding: .utf8) ?? "(binary)"
+            print("[tribe] TRIBE error response body: \(responseBody.prefix(500))")
             throw URLError(.badServerResponse)
         }
         let result = try JSONDecoder().decode(TribeResponse.self, from: data)
