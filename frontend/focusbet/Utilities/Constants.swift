@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AppConfig {
-    static let backendURL = "https://rpm-humans-pipeline-doug.trycloudflare.com"
+    static let backendURL = "https://lockin.freefoodatpurdue.com"
 }
 
 enum AppColors {
