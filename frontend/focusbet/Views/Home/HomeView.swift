@@ -47,7 +47,7 @@ struct HomeView: View {
     // MARK: - Data fetching
 
     private func loadLeaderboard() async {
-        guard let url = URL(string: "http://127.0.0.1:8000/leaderboard/global") else { return }
+        guard let url = URL(string: "http://35.206.125.242:8080/leaderboard/global") else { return }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             struct Entry: Decodable {

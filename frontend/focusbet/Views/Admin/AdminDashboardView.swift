@@ -23,7 +23,7 @@ private class AdminViewModel {
 
     var isLoading = true
 
-    private let base = "http://127.0.0.1:8000"
+    private let base = "http://35.206.125.242:8080"
 
     // MARK: - Load
 
