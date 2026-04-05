@@ -5,8 +5,7 @@ import Foundation
 class SessionViewModel {
     var isActive = false
     var remainingSeconds: Int = 0
-    var focusScore: Int = 0
-    var scores = FocusScoreData(gaze: 0, posture: 0, blink: 0, keyMouse: 0, tabs: 0, checkIn: 0)
+    var scores = FocusScoreData(screenCapture: 0, motionDetection: 0)
     var buildingId: String = ""
     var duration: Int = 0
 
@@ -17,8 +16,8 @@ class SessionViewModel {
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
-    var buildingScore: Int {
-        FocusScoreData.buildingScore(focusScore: focusScore, durationMinutes: duration, daysStudiedThisWeek: 5)
+    var sessionScore: Int {
+        FocusScoreData.sessionScore(focusLevel: scores.focusLevel, durationMinutes: duration)
     }
 
     func startSession(duration: Int, buildingId: String) {
@@ -26,7 +25,7 @@ class SessionViewModel {
         self.buildingId = buildingId
         self.remainingSeconds = duration * 60
         self.isActive = true
-        self.focusScore = 85
+        self.scores = FocusScoreData(screenCapture: 85, motionDetection: 85)
     }
 
     func endSession() {

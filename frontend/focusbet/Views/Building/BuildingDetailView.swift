@@ -11,8 +11,14 @@ struct BuildingDetailView: View {
         MockData.walcTerritory
     }
 
-    @State private var animatingCells = Set<Int>()
-    @State private var highlightedUser: Int? = nil // territory index
+    @State private var highlightedUser: Int? = nil
+    @State private var fetchedFloorPlan: BuildingFloorPlan? = nil
+    @State private var isLoadingFootprint = true
+
+    // Use the OSM-fetched plan if available, otherwise fall back to the static polygon
+    private var activePlan: BuildingFloorPlan {
+        fetchedFloorPlan ?? building.floorPlan
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -25,14 +31,29 @@ struct BuildingDetailView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 16)
 
-                HexGridView(
-                    territory: territory,
-                    animatingCells: animatingCells,
-                    floorPlan: building.floorPlan,
-                    highlightedUser: $highlightedUser
-                )
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                ZStack {
+                    if !isLoadingFootprint {
+                        HexGridView(
+                            territory: territory,
+                            floorPlan: activePlan,
+                            highlightedUser: $highlightedUser
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                    } else {
+                        VStack(spacing: 8) {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .scaleEffect(0.8)
+                                .tint(AppColors.accent)
+                            Text("Loading building shape…")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.textMuted)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(AppColors.bgPrimary)
@@ -123,7 +144,7 @@ struct BuildingDetailView: View {
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
-        .onAppear { startCellAnimation() }
+        .task { await loadFootprint() }
     }
 
     private func colorForActivity(_ type: ActivityFeedItem.ActivityType) -> Color {
@@ -135,18 +156,80 @@ struct BuildingDetailView: View {
         }
     }
 
-    private func startCellAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-            let cellCount = 400
-            let randomCells = Set((0..<12).map { _ in Int.random(in: 0..<cellCount) })
-            withAnimation(.easeInOut(duration: 0.6)) {
-                animatingCells = randomCells
+    // MARK: - OSM footprint loading
+
+    private func loadFootprint() async {
+        // Serve from cache instantly — no loading flash on repeat visits
+        if let cached = FootprintCache.shared.get(for: buildingId) {
+            fetchedFloorPlan = cached
+            isLoadingFootprint = false
+            return
+        }
+        let plan = await fetchBuildingFootprint(lat: building.latitude, lon: building.longitude)
+        if let plan {
+            FootprintCache.shared.set(plan, for: buildingId)
+        }
+        fetchedFloorPlan = plan   // nil → activePlan falls back to building.floorPlan
+        isLoadingFootprint = false
+    }
+
+    private func fetchBuildingFootprint(lat: Double, lon: Double) async -> BuildingFloorPlan? {
+        let query = "[out:json];way[\"building\"](around:50,\(lat),\(lon));out geom;"
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://overpass-api.de/api/interpreter?data=\(encoded)")
+        else { return nil }
+
+        var request = URLRequest(url: url)
+        request.setValue("FocusBetApp/1.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            guard
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let elements = json["elements"] as? [[String: Any]],
+                let first = elements.first,
+                let geometry = first["geometry"] as? [[String: Any]]
+            else { return nil }
+
+            let coords: [(Double, Double)] = geometry.compactMap { node in
+                guard let nodeLat = node["lat"] as? Double,
+                      let nodeLon = node["lon"] as? Double else { return nil }
+                return (nodeLat, nodeLon)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    animatingCells.removeAll()
-                }
+            guard coords.count >= 3 else { return nil }
+
+            // Compute bounding box
+            let lats = coords.map(\.0)
+            let lons = coords.map(\.1)
+            guard let minLat = lats.min(), let maxLat = lats.max(),
+                  let minLon = lons.min(), let maxLon = lons.max() else { return nil }
+            let latRange = max(maxLat - minLat, 0.00001)
+            let lonRange = max(maxLon - minLon, 0.00001)
+
+            // Normalize to [0.05, 0.95] so cells don't hug the frame edge
+            let lo = 0.05, hi = 0.95, span = hi - lo
+            let normalized: [(Double, Double)] = coords.map { (nodeLat, nodeLon) in
+                let nx = (nodeLon - minLon) / lonRange * span + lo
+                let ny = (1.0 - (nodeLat - minLat) / latRange) * span + lo  // flip Y
+                return (nx, ny)
             }
+
+            return BuildingFloorPlan(points: normalized)
+        } catch {
+            return nil  // fall back to static polygon
         }
     }
+}
+
+// MARK: - In-memory footprint cache (persists for the app session)
+
+@MainActor
+private final class FootprintCache {
+    static let shared = FootprintCache()
+    private init() {}
+    private var cache: [String: BuildingFloorPlan] = [:]
+
+    func get(for id: String) -> BuildingFloorPlan? { cache[id] }
+    func set(_ plan: BuildingFloorPlan, for id: String) { cache[id] = plan }
 }

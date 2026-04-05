@@ -9,11 +9,10 @@ enum MockData {
         name: "Yewon",
         initials: "YC",
         colorIndex: 0,
-        totalScore: 2450,
+        totalScore: 260,           // this week: HIKS 130 + WALC 80 + LWSN 50
         totalSessions: 47,
         totalHours: 62.5,
         avgFocusScore: 82,
-        weeklyConsistency: 0.71,
         kingBuildings: ["walc", "knoy", "corec"],
         isDeviceVerified: true
     )
@@ -22,15 +21,23 @@ enum MockData {
 
     static let users: [User] = [
         currentUser,
-        User(id: "user-1", name: "NakJun", initials: "NJ", colorIndex: 1, totalScore: 2280, totalSessions: 42, totalHours: 58.0, avgFocusScore: 88, weeklyConsistency: 0.86, kingBuildings: ["lawson", "hovde"], isDeviceVerified: true),
-        User(id: "user-2", name: "Suji", initials: "SJ", colorIndex: 2, totalScore: 2100, totalSessions: 38, totalHours: 51.0, avgFocusScore: 79, weeklyConsistency: 0.71, kingBuildings: ["hicks", "lilly"], isDeviceVerified: true),
-        User(id: "user-3", name: "Eunho", initials: "EH", colorIndex: 3, totalScore: 1950, totalSessions: 35, totalHours: 45.0, avgFocusScore: 85, weeklyConsistency: 0.57, kingBuildings: [], isDeviceVerified: true),
-        User(id: "user-4", name: "Alex", initials: "AK", colorIndex: 4, totalScore: 1820, totalSessions: 33, totalHours: 42.0, avgFocusScore: 76, weeklyConsistency: 0.86, kingBuildings: ["pmu"], isDeviceVerified: false),
-        User(id: "user-5", name: "Jordan", initials: "JT", colorIndex: 5, totalScore: 1700, totalSessions: 30, totalHours: 38.0, avgFocusScore: 81, weeklyConsistency: 0.43, kingBuildings: [], isDeviceVerified: true),
-        User(id: "user-6", name: "Casey", initials: "CR", colorIndex: 6, totalScore: 1580, totalSessions: 28, totalHours: 35.0, avgFocusScore: 73, weeklyConsistency: 0.57, kingBuildings: [], isDeviceVerified: true),
-        User(id: "user-7", name: "Riley", initials: "RM", colorIndex: 7, totalScore: 1420, totalSessions: 25, totalHours: 30.0, avgFocusScore: 77, weeklyConsistency: 0.43, kingBuildings: [], isDeviceVerified: false),
-        User(id: "user-8", name: "Morgan", initials: "ML", colorIndex: 8, totalScore: 1300, totalSessions: 22, totalHours: 27.0, avgFocusScore: 70, weeklyConsistency: 0.29, kingBuildings: [], isDeviceVerified: true),
-        User(id: "user-9", name: "Taylor", initials: "TS", colorIndex: 9, totalScore: 1150, totalSessions: 20, totalHours: 24.0, avgFocusScore: 68, weeklyConsistency: 0.43, kingBuildings: [], isDeviceVerified: true),
+        User(id: "user-1", name: "NakJun", initials: "NJ", colorIndex: 1, totalScore: 318, totalSessions: 42, totalHours: 58.0, avgFocusScore: 88, kingBuildings: ["lawson", "hovde"], isDeviceVerified: true),
+        User(id: "user-2", name: "Suji", initials: "SJ", colorIndex: 2, totalScore: 285, totalSessions: 38, totalHours: 51.0, avgFocusScore: 79, kingBuildings: ["hicks", "lilly"], isDeviceVerified: true),
+        User(id: "user-3", name: "Eunho", initials: "EH", colorIndex: 3, totalScore: 241, totalSessions: 35, totalHours: 45.0, avgFocusScore: 85, kingBuildings: [], isDeviceVerified: true),
+        User(id: "user-4", name: "Alex", initials: "AK", colorIndex: 4, totalScore: 198, totalSessions: 33, totalHours: 42.0, avgFocusScore: 76, kingBuildings: ["pmu"], isDeviceVerified: false),
+        User(id: "user-5", name: "Jordan", initials: "JT", colorIndex: 5, totalScore: 174, totalSessions: 30, totalHours: 38.0, avgFocusScore: 81, kingBuildings: [], isDeviceVerified: true),
+        User(id: "user-6", name: "Casey", initials: "CR", colorIndex: 6, totalScore: 152, totalSessions: 28, totalHours: 35.0, avgFocusScore: 73, kingBuildings: [], isDeviceVerified: true),
+        User(id: "user-7", name: "Riley", initials: "RM", colorIndex: 7, totalScore: 138, totalSessions: 25, totalHours: 30.0, avgFocusScore: 77, kingBuildings: [], isDeviceVerified: false),
+        User(id: "user-8", name: "Morgan", initials: "ML", colorIndex: 8, totalScore: 119, totalSessions: 22, totalHours: 27.0, avgFocusScore: 70, kingBuildings: [], isDeviceVerified: true),
+        User(id: "user-9", name: "Taylor", initials: "TS", colorIndex: 9, totalScore: 98, totalSessions: 20, totalHours: 24.0, avgFocusScore: 68, kingBuildings: [], isDeviceVerified: true),
+    ]
+
+    // MARK: - Weekly building score breakdown (current user, this week)
+    // Used by ProfileView to show per-building contribution
+    static let weeklyBuildingScores: [(buildingId: String, abbreviation: String, score: Int)] = [
+        ("hicks",  "HIKS", 130),   // 2 sessions: 89 + 41
+        ("walc",   "WALC",  80),   // 1 session
+        ("lawson", "LWSN",  50),   // 1 session
     ]
 
     // MARK: - Buildings (17 Purdue campus buildings)
@@ -68,10 +75,6 @@ enum MockData {
             (0.55, 0.92), (0.55, 0.55), (0.40, 0.55),
             (0.40, 0.92), (0.08, 0.92),
         ]),
-        "heavilon": BuildingFloorPlan(points: [
-            (0.50, 0.05), (0.92, 0.30), (0.80, 0.92),
-            (0.20, 0.92), (0.08, 0.30),
-        ]),
         "lilly": BuildingFloorPlan(points: [
             (0.02, 0.25), (0.98, 0.25), (0.98, 0.75), (0.02, 0.75),
         ]),
@@ -80,9 +83,6 @@ enum MockData {
             (0.95, 0.30), (0.95, 0.70), (0.70, 0.70),
             (0.70, 0.95), (0.30, 0.95), (0.30, 0.70),
             (0.05, 0.70), (0.05, 0.30), (0.30, 0.30),
-        ]),
-        "rec": BuildingFloorPlan(points: [
-            (0.03, 0.12), (0.97, 0.12), (0.97, 0.88), (0.03, 0.88),
         ]),
         "krannert": BuildingFloorPlan(points: [
             (0.05, 0.05), (0.35, 0.05), (0.35, 0.60),
@@ -122,9 +122,7 @@ enum MockData {
         // Unclaimed buildings
         Building(id: "haas", name: "Haas Hall", abbreviation: "HAAS", position: BuildingPosition(x: 56, y: 32), kingUserId: nil, kingName: nil, totalScore: 7200, sessionsCount: 120, colorIndex: 3, floorPlan: floorPlans["haas"]!, latitude: 40.4268235, longitude: -86.9163111),
         Building(id: "krach", name: "Krach Leadership Center", abbreviation: "KRCH", position: BuildingPosition(x: 70, y: 32), kingUserId: nil, kingName: nil, totalScore: 5400, sessionsCount: 78, colorIndex: 5, floorPlan: floorPlans["krach"]!, latitude: 40.427589, longitude: -86.9212455),
-        Building(id: "heavilon", name: "Heavilon Hall", abbreviation: "HEAV", position: BuildingPosition(x: 72, y: 44), kingUserId: nil, kingName: nil, totalScore: 4200, sessionsCount: 65, colorIndex: 6, floorPlan: floorPlans["heavilon"]!, latitude: 40.4258, longitude: -86.9138),
         Building(id: "stanley", name: "Stanley Coulter Hall", abbreviation: "SC", position: BuildingPosition(x: 40, y: 62), kingUserId: nil, kingName: nil, totalScore: 3500, sessionsCount: 48, colorIndex: 8, floorPlan: floorPlans["stanley"]!, latitude: 40.4249, longitude: -86.9146),
-        Building(id: "rec", name: "Recitation Building", abbreviation: "REC", position: BuildingPosition(x: 56, y: 62), kingUserId: nil, kingName: nil, totalScore: 2900, sessionsCount: 40, colorIndex: 9, floorPlan: floorPlans["rec"]!, latitude: 40.4270, longitude: -86.9139),
         Building(id: "krannert", name: "Krannert Building", abbreviation: "KRAN", position: BuildingPosition(x: 80, y: 62), kingUserId: nil, kingName: nil, totalScore: 4100, sessionsCount: 60, colorIndex: 6, floorPlan: floorPlans["krannert"]!, latitude: 40.4236819, longitude: -86.9109362),
         Building(id: "stewart", name: "Stewart Center", abbreviation: "STEW", position: BuildingPosition(x: 38, y: 55), kingUserId: nil, kingName: nil, totalScore: 2800, sessionsCount: 38, colorIndex: 9, floorPlan: floorPlans["stewart"]!, latitude: 40.4250842, longitude: -86.9127108),
         Building(id: "ee", name: "Electrical Engineering Building", abbreviation: "EE", position: BuildingPosition(x: 50, y: 18), kingUserId: nil, kingName: nil, totalScore: 2400, sessionsCount: 34, colorIndex: 3, floorPlan: floorPlans["ee"]!, latitude: 40.4293415, longitude: -86.9126703),
@@ -162,16 +160,19 @@ enum MockData {
     // MARK: - Session History
 
     static let sessionHistory: [StudySession] = [
-        StudySession(id: "s1", userId: "user-me", buildingId: "walc", buildingName: "WALC", startTime: Date().addingTimeInterval(-3600), duration: 120, focusScore: 87, buildingScore: 72, gazeScore: 91, postureScore: 85, blinkScore: 88, keyMouseScore: 82, tabScore: 79, checkInScore: 95, isComplete: true),
-        StudySession(id: "s2", userId: "user-me", buildingId: "lawson", buildingName: "LWSN", startTime: Date().addingTimeInterval(-86400), duration: 60, focusScore: 74, buildingScore: 48, gazeScore: 78, postureScore: 70, blinkScore: 75, keyMouseScore: 69, tabScore: 72, checkInScore: 80, isComplete: true),
-        StudySession(id: "s3", userId: "user-me", buildingId: "walc", buildingName: "WALC", startTime: Date().addingTimeInterval(-172800), duration: 240, focusScore: 91, buildingScore: 88, gazeScore: 94, postureScore: 89, blinkScore: 92, keyMouseScore: 87, tabScore: 85, checkInScore: 98, isComplete: true),
-        StudySession(id: "s4", userId: "user-me", buildingId: "hicks", buildingName: "HIKS", startTime: Date().addingTimeInterval(-259200), duration: 120, focusScore: 68, buildingScore: 52, gazeScore: 72, postureScore: 65, blinkScore: 70, keyMouseScore: 63, tabScore: 60, checkInScore: 78, isComplete: true),
-        StudySession(id: "s5", userId: "user-me", buildingId: "pmu", buildingName: "PMU", startTime: Date().addingTimeInterval(-345600), duration: 60, focusScore: 82, buildingScore: 55, gazeScore: 85, postureScore: 80, blinkScore: 83, keyMouseScore: 78, tabScore: 76, checkInScore: 90, isComplete: true),
-        StudySession(id: "s6", userId: "user-me", buildingId: "walc", buildingName: "WALC", startTime: Date().addingTimeInterval(-432000), duration: 120, focusScore: 79, buildingScore: 64, gazeScore: 82, postureScore: 77, blinkScore: 80, keyMouseScore: 75, tabScore: 73, checkInScore: 87, isComplete: true),
-        StudySession(id: "s7", userId: "user-me", buildingId: "lawson", buildingName: "LWSN", startTime: Date().addingTimeInterval(-518400), duration: 240, focusScore: 93, buildingScore: 90, gazeScore: 96, postureScore: 91, blinkScore: 94, keyMouseScore: 89, tabScore: 87, checkInScore: 100, isComplete: true),
-        StudySession(id: "s8", userId: "user-me", buildingId: "krach", buildingName: "KRCH", startTime: Date().addingTimeInterval(-604800), duration: 60, focusScore: 65, buildingScore: 42, gazeScore: 68, postureScore: 62, blinkScore: 66, keyMouseScore: 60, tabScore: 58, checkInScore: 76, isComplete: true),
-        StudySession(id: "s9", userId: "user-me", buildingId: "walc", buildingName: "WALC", startTime: Date().addingTimeInterval(-691200), duration: 120, focusScore: 85, buildingScore: 70, gazeScore: 88, postureScore: 83, blinkScore: 86, keyMouseScore: 80, tabScore: 78, checkInScore: 93, isComplete: true),
-        StudySession(id: "s10", userId: "user-me", buildingId: "hicks", buildingName: "HIKS", startTime: Date().addingTimeInterval(-777600), duration: 60, focusScore: 77, buildingScore: 50, gazeScore: 80, postureScore: 75, blinkScore: 78, keyMouseScore: 73, tabScore: 71, checkInScore: 85, isComplete: true),
+        // This week — contributes to weeklyBuildingScores (WALC 80, HIKS 130, LWSN 50)
+        // sessionScore = Int(focusLevel * 0.8 + min(duration/240*100, 100) * 0.2)
+        StudySession(id: "s1", userId: "user-me", buildingId: "walc",   buildingName: "WALC", startTime: Date().addingTimeInterval(-3600),   duration: 120, focusScore: 88, sessionScore: 80, screenCapture: 88, motionDetection: 88, isComplete: true),
+        StudySession(id: "s2", userId: "user-me", buildingId: "hicks",  buildingName: "HIKS", startTime: Date().addingTimeInterval(-86400),  duration: 180, focusScore: 93, sessionScore: 89, screenCapture: 94, motionDetection: 92, isComplete: true),
+        StudySession(id: "s3", userId: "user-me", buildingId: "hicks",  buildingName: "HIKS", startTime: Date().addingTimeInterval(-172800), duration: 60,  focusScore: 45, sessionScore: 41, screenCapture: 46, motionDetection: 44, isComplete: true),
+        StudySession(id: "s4", userId: "user-me", buildingId: "lawson", buildingName: "LWSN", startTime: Date().addingTimeInterval(-259200), duration: 120, focusScore: 50, sessionScore: 50, screenCapture: 52, motionDetection: 48, isComplete: true),
+        // Previous weeks
+        StudySession(id: "s5", userId: "user-me", buildingId: "walc",   buildingName: "WALC", startTime: Date().addingTimeInterval(-345600), duration: 240, focusScore: 81, sessionScore: 84, screenCapture: 82, motionDetection: 80, isComplete: true),
+        StudySession(id: "s6", userId: "user-me", buildingId: "hicks",  buildingName: "HIKS", startTime: Date().addingTimeInterval(-432000), duration: 120, focusScore: 68, sessionScore: 64, screenCapture: 68, motionDetection: 68, isComplete: true),
+        StudySession(id: "s7", userId: "user-me", buildingId: "pmu",    buildingName: "PMU",  startTime: Date().addingTimeInterval(-518400), duration: 60,  focusScore: 79, sessionScore: 68, screenCapture: 78, motionDetection: 80, isComplete: true),
+        StudySession(id: "s8", userId: "user-me", buildingId: "lawson", buildingName: "LWSN", startTime: Date().addingTimeInterval(-604800), duration: 240, focusScore: 91, sessionScore: 92, screenCapture: 92, motionDetection: 90, isComplete: true),
+        StudySession(id: "s9", userId: "user-me", buildingId: "krach",  buildingName: "KRCH", startTime: Date().addingTimeInterval(-691200), duration: 60,  focusScore: 63, sessionScore: 55, screenCapture: 64, motionDetection: 62, isComplete: true),
+        StudySession(id: "s10",userId: "user-me", buildingId: "walc",   buildingName: "WALC", startTime: Date().addingTimeInterval(-777600), duration: 120, focusScore: 84, sessionScore: 77, screenCapture: 84, motionDetection: 84, isComplete: true),
     ]
 
     // MARK: - Roads
@@ -202,6 +203,5 @@ enum MockData {
         (11, 2320, 14, ["walc", "hicks"]),
     ]
 
-    static let streakDays = 5
-    static let streakDots: [Bool] = [true, true, true, true, true, false, false] // Mon-Sun
+    // Streak tracking removed — consistency is no longer part of scoring
 }

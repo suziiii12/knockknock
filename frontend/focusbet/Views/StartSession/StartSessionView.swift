@@ -105,7 +105,7 @@ struct StartSessionView: View {
             VStack(spacing: 12) {
                 SummaryRow(label: "Building", value: building.abbreviation)
                 SummaryRow(label: "Duration", value: selectedDuration == 1 ? "30 seconds (test)" : "\(selectedDuration / 60) hour\(selectedDuration >= 120 ? "s" : "")")
-                SummaryRow(label: "Max Time Score", value: selectedDuration == 1 ? "N/A" : "\(min(selectedDuration * 100 / 240, 100))pts")
+                SummaryRow(label: "Duration Bonus", value: selectedDuration == 1 ? "N/A" : "+\(Int(min(Double(selectedDuration) / 240.0 * 100.0, 100.0) * 0.2))pts (20%)")
             }
             .padding(20)
             .background(AppColors.bgSecondary)

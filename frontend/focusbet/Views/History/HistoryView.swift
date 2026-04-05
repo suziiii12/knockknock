@@ -74,7 +74,7 @@ private struct SessionCard: View {
     let session: StudySession
 
     private var scoreColor: Color {
-        if session.focusScore >= 80 { return AppColors.accentLight }
+        if session.focusScore >= 80 { return AppColors.accent }
         if session.focusScore >= 60 { return AppColors.warning }
         return AppColors.danger
     }
@@ -117,7 +117,7 @@ private struct SessionCard: View {
 
             // Building score
             VStack(alignment: .trailing, spacing: 2) {
-                Text("+\(session.buildingScore)pts")
+                Text("+\(session.sessionScore)pts")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppColors.accent)
                 Text("\(session.duration / 60)h")

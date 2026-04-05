@@ -2,13 +2,12 @@ import Foundation
 
 @Observable
 class FocusTrackingService {
-    var currentScores = FocusScoreData(gaze: 0, posture: 0, blink: 0, keyMouse: 0, tabs: 0, checkIn: 0)
+    var currentScores = FocusScoreData(screenCapture: 0, motionDetection: 0)
     var isTracking = false
 
     func startTracking() {
         isTracking = true
-        // Real tracking via Vision framework will be integrated later
-        // For now, simulate with random scores
+        // Real tracking via Vision + ScreenCaptureKit will be integrated later
         simulateScores()
     }
 
@@ -19,12 +18,8 @@ class FocusTrackingService {
     private func simulateScores() {
         guard isTracking else { return }
         currentScores = FocusScoreData(
-            gaze: Int.random(in: 75...96),
-            posture: Int.random(in: 70...92),
-            blink: Int.random(in: 72...94),
-            keyMouse: Int.random(in: 68...90),
-            tabs: Int.random(in: 65...88),
-            checkIn: Int.random(in: 80...100)
+            screenCapture:   Int.random(in: 75...95),  // TRIBEv2 cognitive demand
+            motionDetection: Int.random(in: 70...92)   // webcam gaze/posture/blink
         )
     }
 }

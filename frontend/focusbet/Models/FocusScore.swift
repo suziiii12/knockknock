@@ -1,22 +1,18 @@
 import Foundation
 
 struct FocusScoreData: Sendable {
-    var gaze: Int
-    var posture: Int
-    var blink: Int
-    var keyMouse: Int
-    var tabs: Int
-    var checkIn: Int
+    var screenCapture: Int    // 0-100  TRIBEv2 cognitive demand (40% of focus)
+    var motionDetection: Int  // 0-100  webcam gaze/posture/blink (40% of focus)
 
-    var overall: Int {
-        let total = gaze + posture + blink + keyMouse + tabs + checkIn
-        return total / 6
+    /// Combined focus level: average of screen capture and motion detection
+    var focusLevel: Int {
+        (screenCapture + motionDetection) / 2
     }
 
-    static func buildingScore(focusScore: Int, durationMinutes: Int, daysStudiedThisWeek: Int) -> Int {
-        let focus = Double(focusScore) * 0.5
-        let time = min(Double(durationMinutes) / 240.0 * 100.0, 100.0) * 0.3
-        let consistency = (Double(daysStudiedThisWeek) / 7.0) * 100.0 * 0.2
-        return Int(focus + time + consistency)
+    /// Session Score = Focus (80%) + Duration (20%)
+    static func sessionScore(focusLevel: Int, durationMinutes: Int) -> Int {
+        let focus    = Double(focusLevel) * 0.8
+        let duration = min(Double(durationMinutes) / 240.0 * 100.0, 100.0) * 0.2
+        return Int(focus + duration)
     }
 }

@@ -13,8 +13,8 @@ struct ResultView: View {
 
     private var isSuccess: Bool { focusScore >= 70 }
 
-    private var buildingScore: Double {
-        Double(FocusScoreData.buildingScore(focusScore: focusScore, durationMinutes: duration, daysStudiedThisWeek: 5))
+    private var sessionScore: Int {
+        FocusScoreData.sessionScore(focusLevel: focusScore, durationMinutes: duration)
     }
 
     private var engagementData: [(minute: Int, score: Double)] {
@@ -37,28 +37,30 @@ struct ResultView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 12) {
-            // ROW 1 — Score Summary
-            scoreSummary
+        ScrollView {
+            VStack(spacing: 10) {
+                // ROW 1 — Score Summary
+                scoreSummary
 
-            // ROW 2 — Engagement + Brain (side by side)
-            HStack(alignment: .top, spacing: 12) {
-                engagementChart
-                brainActivitySection
+                // ROW 2 — Engagement + Brain (side by side)
+                HStack(alignment: .top, spacing: 10) {
+                    engagementChart
+                    brainActivitySection
+                }
+
+                // ROW 3 — AI Insights (side by side)
+                HStack(alignment: .top, spacing: 10) {
+                    sessionSummaryCard
+                    improvementTipsCard
+                }
+
+                // ROW 4 — Buttons
+                actionButtons
             }
-
-            // ROW 3 — AI Insights (side by side)
-            HStack(alignment: .top, spacing: 12) {
-                sessionSummaryCard
-                improvementTipsCard
-            }
-
-            // ROW 4 — Buttons
-            actionButtons
+            .padding(.top, 16)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
     }
@@ -66,41 +68,42 @@ struct ResultView: View {
     // MARK: - Score Summary
 
     private var scoreSummary: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 36) {
             FocusGaugeView(score: focusScore)
                 .frame(width: 110, height: 110)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text(isSuccess ? "Session Complete!" : "Needs Improvement")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(isSuccess ? AppColors.accent : AppColors.danger)
 
                 Text("\(building.abbreviation) \u{2022} \(duration >= 60 ? "\(duration / 60)h" : "\(duration)min") session")
-                    .font(.system(size: 13))
+                    .font(.system(size: 15))
                     .foregroundStyle(AppColors.textSecondary)
 
-                HStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Points Earned")
-                            .font(.system(size: 10))
+                HStack(spacing: 24) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Session Score")
+                            .font(.system(size: 12))
                             .foregroundStyle(AppColors.textMuted)
-                        Text("+\(String(format: "%.1f", buildingScore)) pts")
-                            .font(.system(size: 16, weight: .bold))
+                        Text("+\(sessionScore) pts")
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(AppColors.accent)
                     }
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("Rank Change")
-                            .font(.system(size: 10))
+                            .font(.system(size: 12))
                             .foregroundStyle(AppColors.textMuted)
                         Text("\(building.abbreviation): #3 \u{2192} #2 \u{2191}")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(AppColors.accentLight)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(AppColors.accent)
                     }
                 }
             }
             Spacer()
         }
-        .padding(16)
+        .padding(32)
+        .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
         .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
@@ -144,7 +147,7 @@ struct ResultView: View {
                 zoneLegend(AppColors.danger, "Distracted")
             }
         }
-        .padding(14)
+        .padding(10)
         .frame(maxWidth: .infinity)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
@@ -204,7 +207,7 @@ struct ResultView: View {
                     Spacer()
                     Text("78/100")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(AppColors.accentLight)
+                        .foregroundStyle(AppColors.accent)
                 }
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -215,7 +218,7 @@ struct ResultView: View {
                 .frame(height: 6)
             }
         }
-        .padding(14)
+        .padding(10)
         .frame(maxWidth: .infinity)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
@@ -253,15 +256,15 @@ struct ResultView: View {
     // MARK: - AI Feedback
 
     private var sessionSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("\u{1F4DD} Session Summary")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
             bulletPoint("Studied \(duration >= 60 ? "\(duration / 60)h" : "\(duration)min") at \(building.abbreviation) with avg focus of \(focusScore).")
             bulletPoint("Focus dipped around 45min — common with task-switching fatigue.")
             bulletPoint("Strongest focus between 60-80 min during deep work.")
         }
-        .padding(14)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
@@ -269,15 +272,15 @@ struct ResultView: View {
     }
 
     private var improvementTipsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("\u{1F4A1} Improvement Tips")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
             bulletPoint("Try Pomodoro — 25 min focus + 5 min break.")
             bulletPoint("Take a 2-min mental reset when switching tasks.")
             bulletPoint("Minimize phone notifications during high-focus periods.")
         }
-        .padding(14)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
@@ -285,9 +288,9 @@ struct ResultView: View {
     }
 
     private func bulletPoint(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 6) {
-            Circle().fill(AppColors.accentLight).frame(width: 4, height: 4).padding(.top, 5)
-            Text(text).font(.system(size: 11)).foregroundStyle(AppColors.textSecondary).lineSpacing(1)
+        HStack(alignment: .top, spacing: 5) {
+            Circle().fill(AppColors.accent).frame(width: 3, height: 3).padding(.top, 5)
+            Text(text).font(.system(size: 10)).foregroundStyle(AppColors.textSecondary).lineSpacing(1)
         }
     }
 
