@@ -50,36 +50,8 @@ struct CampusMapView: View {
 
             // Apple MapKit Map
             Map(position: $cameraPosition) {
-                // "You are here" marker at WALC
-                Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
-                    VStack(spacing: 2) {
-                        ZStack {
-                            Circle()
-                                .fill(AppColors.accent.opacity(0.3))
-                                .frame(width: 24, height: 24)
-                            Circle()
-                                .fill(AppColors.accent)
-                                .frame(width: 12, height: 12)
-                                .overlay(Circle().stroke(.white, lineWidth: 2))
-                        }
-                        Text("You are here")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(AppColors.accent)
-                    }
-                    .allowsHitTesting(false)
-                }
-
-                // All 17 building annotations — tappable
-                ForEach(MockData.buildings) { building in
-                    Annotation("", coordinate: building.coordinate, anchor: .center) {
-                        Button {
-                            onNavigate(.building(id: building.id))
-                        } label: {
-                            BuildingMarkerView(building: building)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                youAreHereMarker
+                buildingAnnotations()
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
 
@@ -116,6 +88,43 @@ struct CampusMapView: View {
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+    }
+
+    // Explicit @MapContentBuilder helpers avoid result-builder ambiguity with ChartContentBuilder
+
+    @MapContentBuilder
+    private var youAreHereMarker: some MapContent {
+        Annotation("", coordinate: CLLocationCoordinate2D(latitude: 40.4273891, longitude: -86.9132292), anchor: .center) {
+            VStack(spacing: 2) {
+                ZStack {
+                    Circle()
+                        .fill(AppColors.accent.opacity(0.3))
+                        .frame(width: 24, height: 24)
+                    Circle()
+                        .fill(AppColors.accent)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                }
+                Text("You are here")
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundStyle(AppColors.accent)
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    @MapContentBuilder
+    private func buildingAnnotations() -> some MapContent {
+        ForEach(MockData.buildings) { building in
+            Annotation("", coordinate: building.coordinate, anchor: .center) {
+                Button {
+                    onNavigate(.building(id: building.id))
+                } label: {
+                    BuildingMarkerView(building: building)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 
