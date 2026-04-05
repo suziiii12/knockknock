@@ -64,14 +64,15 @@ class SessionViewModel {
         self.screenCaptureService = screenCapture
         self.sessionSummary       = nil
 
+        // Request permissions, then start monitoring and TRIBE v2 recording
         Task {
             await PermissionService.shared.requestAllPermissions()
             screenCapture.startMonitoring(focusTrackingService: focusTracking)
             focusTracking.startTracking()
-        }
 
-        // Start TRIBE v2 screen recording + analysis loop
-        tribeAnalysis.startAnalysis()
+            // Start TRIBE v2 screen recording + analysis loop (after permissions granted)
+            tribeAnalysis.startAnalysis()
+        }
 
         // Start LSTM engagement scoring session
         lstm.reset()

@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// Manages the screen-capture → TRIBE v2 analysis loop.
 /// Records 20-second screen clips every 60 seconds and sends them to the TRIBE v2
@@ -32,34 +33,55 @@ class TribeAnalysisService {
     private var recorder: ScreenRecorder?
     private var sendTimer: Timer?
     private let store = SessionStore()
+    private var captureTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
     func startAnalysis() {
-        recorder = ScreenRecorder()
+        let rec = ScreenRecorder()
+        recorder = rec
         clips = []
         isAnalyzing = false
         store.start()
         demand = 0; gate = 0; pfc = 0; dmn = 0; lang = 0
         encodingType = .idle
         contentLabel = ""; contentReason = ""
-        statusMessage = "Recording screen..."
+        statusMessage = "Requesting screen capture permission..."
 
-        sendTimer = Timer.scheduledTimer(withTimeInterval: sendInterval, repeats: true) { [weak self] _ in
-            Task.detached(priority: .userInitiated) { [weak self] in
+        // Request screen capture permission first, then start capture loop
+        let dur = clipDuration
+        let interval = sendInterval
+
+        // Check/request screen recording permission
+        if !CGPreflightScreenCaptureAccess() {
+            CGRequestScreenCaptureAccess()
+            print("[tribe] Screen capture permission requested — user must grant in System Preferences")
+            statusMessage = "Grant screen recording permission in System Preferences, then restart session"
+            // Even if not yet granted, proceed — SCShareableContent will prompt or fail with a clear error
+        }
+
+        statusMessage = "Recording screen..."
+        print("[tribe] Analysis started — \(Int(dur))s clips every \(Int(interval))s")
+
+        // Schedule recurring timer
+        sendTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
                 await self?.captureAndSend()
             }
         }
+
         // Immediate first capture
-        Task.detached(priority: .userInitiated) { [weak self] in
+        captureTask = Task { @MainActor [weak self] in
             await self?.captureAndSend()
         }
-        print("[tribe] Analysis started — \(Int(clipDuration))s clips every \(Int(sendInterval))s")
     }
 
     func stopAnalysis() {
         sendTimer?.invalidate()
         sendTimer = nil
+        captureTask?.cancel()
+        captureTask = nil
         recorder = nil
         statusMessage = "Analysis stopped"
         print("[tribe] Analysis stopped — \(clips.count) clips collected")
@@ -99,26 +121,36 @@ class TribeAnalysisService {
     // MARK: - Capture & Send
 
     private func captureAndSend() async {
-        guard let recorder else { return }
-        await MainActor.run { statusMessage = "Capturing \(Int(clipDuration))s clip..." }
+        guard let recorder else {
+            print("[tribe] captureAndSend: recorder is nil, skipping")
+            return
+        }
+        statusMessage = "Capturing \(Int(clipDuration))s clip..."
+        print("[tribe] Starting \(Int(clipDuration))s screen capture...")
+
+        // Capture the config values before entering detached context
+        let dur = clipDuration
 
         let clipURL: URL
         do {
-            clipURL = try await Task.detached(priority: .userInitiated) {
-                try await recorder.recordClip(duration: self.clipDuration)
-            }.value
+            // Record clip off the main actor (ScreenCaptureKit needs a non-main queue)
+            clipURL = try await recorder.recordClip(duration: dur)
+            print("[tribe] Clip recorded: \(clipURL.lastPathComponent)")
         } catch {
-            await MainActor.run { statusMessage = "Recording error: \(error.localizedDescription)" }
+            statusMessage = "Recording error: \(error.localizedDescription)"
+            print("[tribe] Recording error: \(error)")
             return
         }
 
-        await MainActor.run { statusMessage = "Sending to TRIBE v2..."; isAnalyzing = true }
+        statusMessage = "Sending to TRIBE v2..."
+        isAnalyzing = true
         do {
             try await sendClip(clipURL: clipURL)
         } catch {
-            await MainActor.run { statusMessage = "Error: \(error.localizedDescription)" }
+            statusMessage = "TRIBE error: \(error.localizedDescription)"
+            print("[tribe] Send error: \(error)")
         }
-        await MainActor.run { isAnalyzing = false }
+        isAnalyzing = false
     }
 
     private func sendClip(clipURL: URL) async throws {
@@ -138,8 +170,12 @@ class TribeAnalysisService {
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
 
+        print("[tribe] Sending \(videoData.count) bytes to \(serverURL)/analyze")
+
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            print("[tribe] Server returned HTTP \(code)")
             throw URLError(.badServerResponse)
         }
         let result = try JSONDecoder().decode(TribeResponse.self, from: data)
@@ -166,21 +202,20 @@ class TribeAnalysisService {
             lang: result.lang
         )
 
-        await MainActor.run {
-            self.demand = result.demand
-            self.gate = gateValue
-            self.pfc = result.pfc
-            self.dmn = result.dmn
-            self.lang = result.lang
-            self.contentLabel = result.content_label ?? ""
-            self.contentReason = result.content_reason ?? ""
-            self.inferenceMs = result.inference_ms
-            self.encodingType = encoding
-            self.statusMessage = "\(encoding.emoji) \(result.content_label ?? "") · \(result.content_reason ?? "")"
-            self.clips.append(clip)
-            self.store.addClip(clip)
-            print("[tribe] clip \(self.clips.count): gate=\(gateValue) label=\(result.content_label ?? "")")
-        }
+        self.demand = result.demand
+        self.gate = gateValue
+        self.pfc = result.pfc
+        self.dmn = result.dmn
+        self.lang = result.lang
+        self.contentLabel = result.content_label ?? ""
+        self.contentReason = result.content_reason ?? ""
+        self.inferenceMs = result.inference_ms
+        self.encodingType = encoding
+        self.statusMessage = "\(encoding.emoji) \(result.content_label ?? "") · \(result.content_reason ?? "")"
+        self.clips.append(clip)
+        self.store.addClip(clip)
+        print("[tribe] clip \(self.clips.count): gate=\(gateValue) label=\(result.content_label ?? "")")
+
         try? FileManager.default.removeItem(at: clipURL)
     }
 }
