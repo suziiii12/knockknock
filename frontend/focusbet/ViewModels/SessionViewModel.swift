@@ -8,12 +8,21 @@ class SessionViewModel {
     var scores           = FocusScoreData(screenCapture: 0, motionDetection: 0)
     var buildingId       = ""
     var duration         = 0
-    
+
     // Optional engagement data from EngagementScoreAI pipeline
     var engagementScores: [Double]?
     var avgEngagement: Double?
     var studyPct: Double?
     var distractionCount: Int?
+
+    // TRIBE v2 analysis state
+    private(set) var tribeAnalysis = TribeAnalysisService()
+    private(set) var sessionSummary: SessionSummary?
+    var encodingType: EncodingType { tribeAnalysis.encodingType }
+    var contentLabel: String { tribeAnalysis.contentLabel }
+    var contentReason: String { tribeAnalysis.contentReason }
+    var tribeStatusMessage: String { tribeAnalysis.statusMessage }
+    var tribeClipCount: Int { tribeAnalysis.clips.count }
 
     private(set) var sessionId: Int?
 
@@ -21,6 +30,7 @@ class SessionViewModel {
     private var focusPostingTask: Task<Void, Never>?
     private var screenCaptureService: ScreenCaptureService?
     private var focusTrackingService: FocusTrackingService?
+    private let lstm = LSTMService()
 
     // MARK: - Computed
 
@@ -52,12 +62,20 @@ class SessionViewModel {
         self.scores               = FocusScoreData(screenCapture: 85, motionDetection: 85)
         self.focusTrackingService = focusTracking
         self.screenCaptureService = screenCapture
+        self.sessionSummary       = nil
 
         Task {
             await PermissionService.shared.requestAllPermissions()
             screenCapture.startMonitoring(focusTrackingService: focusTracking)
             focusTracking.startTracking()
         }
+
+        // Start TRIBE v2 screen recording + analysis loop
+        tribeAnalysis.startAnalysis()
+
+        // Start LSTM engagement scoring session
+        lstm.reset()
+        Task { await lstm.startSession(contentType: "studying") }
 
         print("[SessionViewModel] startSession — duration:\(duration) building:\(buildingId)")
         sessionStartTask = Task {
@@ -84,8 +102,24 @@ class SessionViewModel {
         screenCaptureService = nil
         focusTrackingService = nil
 
+        // Stop TRIBE v2 analysis and build summary with LSTM engagement scores
+        tribeAnalysis.stopAnalysis()
+        let summary = tribeAnalysis.buildSummary(lstm: lstm)
+        sessionSummary = summary
+
+        // Populate engagement data from TRIBE + LSTM analysis
+        if !summary.clips.isEmpty {
+            engagementScores = summary.clips.map(\.engagement)
+            avgEngagement = summary.averageEngagement
+            studyPct = summary.studyingFraction * 100
+            distractionCount = summary.distractionCount
+        }
+
         let startTask = sessionStartTask
         sessionStartTask = nil
+
+        // Stop LSTM session
+        Task { _ = await lstm.stopSession() }
 
         Task {
             // Wait for the start call to finish first — critical for short sessions
@@ -115,7 +149,7 @@ class SessionViewModel {
     func updateScores(from data: FocusScoreData) {
         scores = data
     }
-    
+
     /// Set engagement metrics from EngagementScoreAI pipeline before ending session
     func setEngagementData(
         scores: [Double]? = nil,

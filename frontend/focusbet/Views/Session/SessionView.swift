@@ -124,6 +124,48 @@ struct SessionView: View {
                             .foregroundStyle(AppColors.textPrimary)
                     }
 
+                    // TRIBE v2 Analysis
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Encoding")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.textMuted)
+                            Spacer()
+                            Text("\(vm.encodingType.emoji) \(vm.encodingType.rawValue)")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(vm.encodingType.color)
+                        }
+                        if !vm.contentLabel.isEmpty {
+                            HStack {
+                                Text("Content")
+                                    .font(AppFonts.caption)
+                                    .foregroundStyle(AppColors.textMuted)
+                                Spacer()
+                                Text(vm.contentLabel)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AppColors.textPrimary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        HStack {
+                            Text("Clips Analyzed")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.textMuted)
+                            Spacer()
+                            Text("\(vm.tribeClipCount)")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(AppColors.accent)
+                        }
+                        Text(vm.tribeStatusMessage)
+                            .font(AppFonts.small)
+                            .foregroundStyle(AppColors.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineLimit(2)
+                    }
+                    .padding(16)
+                    .background(AppColors.bgTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
                     // Building info
                     VStack(spacing: 8) {
                         HStack {
