@@ -98,9 +98,18 @@ class TribeAnalysisService {
         print("[tribe] Stopped new captures — waiting for in-progress analysis (\(clips.count) clips so far)")
     }
 
+    /// Wait for the in-progress capture task to complete (do NOT cancel it).
+    func awaitPendingCapture() async {
+        if let task = captureTask {
+            print("[tribe] Awaiting in-progress capture task...")
+            await task.value
+            print("[tribe] Capture task completed — \(clips.count) clips total")
+        }
+    }
+
     /// Phase 2: Full cleanup after in-progress analysis has finished.
     func finalizeStop() {
-        captureTask?.cancel()
+        // Don't cancel — task should already be done after awaitPendingCapture()
         captureTask = nil
         recorder = nil
         getSessionId = nil

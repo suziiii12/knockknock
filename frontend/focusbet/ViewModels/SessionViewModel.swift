@@ -104,8 +104,8 @@ class SessionViewModel {
         focusPostingTask = nil
         screenCaptureService?.stopMonitoring()
         focusTrackingService?.stopTracking()
-        screenCaptureService = nil
-        focusTrackingService = nil
+        // Don't nil screenCaptureService/focusTrackingService yet —
+        // TRIBE capture task may still need them for fallback
 
         // Phase 1: Stop new captures from starting, but let in-progress clip finish
         tribeAnalysis.stopNewCaptures()
@@ -120,17 +120,15 @@ class SessionViewModel {
 
         // All remaining work happens async — ResultView shows loading until ready
         Task {
-            // 1. Wait for any in-progress TRIBE clip analysis to finish
-            print("[SessionViewModel] Waiting for in-progress analysis to complete...")
-            var waited = 0
-            while tribeAnalysis.isAnalyzing && waited < 120 {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
-                waited += 1
-            }
-            print("[SessionViewModel] Analysis done — \(tribeAnalysis.clips.count) clips collected (waited \(waited * 500)ms)")
+            // 1. Await in-progress TRIBE capture to complete (can take 2-3 min for analysis)
+            print("[SessionViewModel] Awaiting in-progress TRIBE analysis...")
+            await tribeAnalysis.awaitPendingCapture()
+            print("[SessionViewModel] Analysis complete — \(tribeAnalysis.clips.count) clips collected")
 
-            // Phase 2: Now fully clean up the analysis service
+            // Phase 2: Now fully clean up the analysis service and view model refs
             tribeAnalysis.finalizeStop()
+            screenCaptureService = nil
+            focusTrackingService = nil
 
             // 2. Stop LSTM and fetch engagement export
             _ = await lstm.stopSession()
