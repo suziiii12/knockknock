@@ -58,7 +58,7 @@ actor APIService {
     /// Set to true to skip all network calls and use MockData only (frontend dev mode).
     static let useMockOnly = false
 
-    private let baseURL = "http://35.206.125.242:8080"
+    private let baseURL = AppConfig.backendURL
     private var authToken: String?
 
     // MARK: - Token management

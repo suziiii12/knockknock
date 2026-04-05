@@ -23,7 +23,7 @@ private class AdminViewModel {
 
     var isLoading = true
 
-    private let base = "http://35.206.125.242:8080"
+    private let base = AppConfig.backendURL
 
     // MARK: - Load
 

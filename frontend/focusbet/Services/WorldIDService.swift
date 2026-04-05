@@ -53,7 +53,7 @@ final class WorldIDService {
     static let shared = WorldIDService()
     private init() {}
 
-    private let backendURL = "http://35.206.125.242:8080"
+    private let backendURL = AppConfig.backendURL
     private let action     = "focus_session"
 
     // MARK: - Public

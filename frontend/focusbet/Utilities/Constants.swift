@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum AppConfig {
+    static let backendURL = "http://35.206.125.242:8080"
+}
+
 enum AppColors {
     // Backgrounds
     static let bgPrimary = Color(red: 245/255, green: 245/255, blue: 245/255)       // #F5F5F5 White Smoke
