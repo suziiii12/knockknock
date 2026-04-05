@@ -223,7 +223,7 @@ def send_to_backend(
 
     try:
         r = requests.post(
-            f"{backend_url.rstrip('/')}/api/sessions",
+            f"{backend_url.rstrip('/')}/sessions/end",
             json=payload,
             timeout=15
         )

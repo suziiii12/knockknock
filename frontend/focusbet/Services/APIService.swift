@@ -381,9 +381,35 @@ actor APIService {
         )
     }
 
-    /// Ends the current user's active session. Returns the final score (0–100).
-    func endSession() async throws -> Double {
-        let raw = try await fetch(APISessionOut.self, path: "/sessions/end", method: "POST")
+    /// Ends the current user's active session with optional engagement data from EngagementScoreAI.
+    /// Returns the final score (0–100).
+    func endSession(
+        engagementScores: [Double]? = nil,
+        avgEngagement: Double? = nil,
+        studyPct: Double? = nil,
+        distractionCount: Int? = nil
+    ) async throws -> Double {
+        var body: [String: Any] = [:]
+        
+        if let engagementScores = engagementScores {
+            body["engagement_scores"] = engagementScores
+        }
+        if let avgEngagement = avgEngagement {
+            body["avg_engagement"] = avgEngagement
+        }
+        if let studyPct = studyPct {
+            body["study_pct"] = studyPct
+        }
+        if let distractionCount = distractionCount {
+            body["distraction_count"] = distractionCount
+        }
+        
+        let raw = try await fetch(
+            APISessionOut.self,
+            path: "/sessions/end",
+            method: "POST",
+            body: body.isEmpty ? nil : body
+        )
         return raw.finalScore ?? 0.0
     }
 

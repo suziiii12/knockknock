@@ -50,6 +50,7 @@ class ScoreRecord:
     score: float
     body_engagement: float
     daisee_class: str
+    inferred_state: Optional[str]
     confidence: float
 
 
@@ -237,6 +238,7 @@ class InferenceEngine:
             score=round(score, 2),
             body_engagement=snapshot.body_engagement,
             daisee_class=snapshot.daisee_class,
+            inferred_state=snapshot.inferred_state,
             confidence=snapshot.confidence,
         )
 

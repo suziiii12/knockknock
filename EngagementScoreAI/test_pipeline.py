@@ -19,7 +19,7 @@ from pipeline.inference_engine import InferenceEngine
 def main():
     parser = argparse.ArgumentParser(description="Test the focus pipeline directly.")
     parser.add_argument("--duration", type=int,   default=180, help="How long to run (seconds)")
-    parser.add_argument("--epoch",    type=float, default=30,  help="Score interval (seconds)")
+    parser.add_argument("--epoch",    type=float, default=120,  help="Score interval (seconds)")
     args = parser.parse_args()
 
     # Override epoch interval before starting

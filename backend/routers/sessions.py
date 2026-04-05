@@ -100,6 +100,7 @@ def record_focus_level(
 
 @router.post("/sessions/end")
 def end_session(
+    body: Optional[schemas.SessionEndRequest] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -112,9 +113,25 @@ def end_session(
     final_score = round(
         (sum(l.level for l in levels) / len(levels)) * 100 if levels else 0.0, 2
     )
+    
+    # If engagement data is provided, blend it with final_score (60/40 weighting)
+    if body and body.avg_engagement is not None:
+        final_score = round(final_score * 0.6 + body.avg_engagement * 0.4, 2)
 
     session.ended_at   = datetime.now(timezone.utc)
     session.final_score = final_score
+    
+    # Store engagement metadata if provided
+    if body:
+        if body.engagement_scores:
+            # Store as JSON string (if using PostgreSQL) or summarize
+            session.engagement_scores = body.engagement_scores
+        if body.avg_engagement:
+            session.avg_engagement = round(body.avg_engagement, 2)
+        if body.study_pct:
+            session.study_pct = round(body.study_pct, 2)
+        if body.distraction_count:
+            session.distraction_count = body.distraction_count
 
     # Upsert weekly_score — accumulate across sessions in the same week
     month, week = _current_month_week()
