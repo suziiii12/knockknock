@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone, date
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session

@@ -145,29 +145,21 @@ class SessionViewModel {
                 distractionCount = summary.distractionCount
             }
 
-            // 5. End session on backend — wait for start to finish first
+            // 5. Wait for session start to finish, post final focus level
             await startTask?.value
-            var finalScore: Double = summary.sessionScore
             if let sid = sessionId {
                 await postFocusLevel(sessionId: sid)
-                do {
-                    finalScore = try await APIService.shared.endSession(
-                        engagementScores: engagementScores,
-                        avgEngagement: avgEngagement,
-                        studyPct: studyPct,
-                        distractionCount: distractionCount
-                    )
-                    print("[SessionViewModel] Session \(sid) ended — final score: \(finalScore)")
-                    NotificationCenter.default.post(name: .sessionDidEnd, object: nil)
-                } catch {
-                    print("[SessionViewModel] endSession error: \(error.localizedDescription)")
-                }
             }
 
-            // 6. Now populate result store — this makes ResultView transition from loading to content
-            resultStore.finalScore = finalScore
+            // 6. Populate result store — ResultView transitions from loading to content
+            // /sessions/end will be called when user exits ResultView
+            resultStore.finalScore = summary.sessionScore
             resultStore.summary = summary
-            print("[SessionViewModel] ResultStore populated — \(summary.clips.count) clips, score=\(finalScore)")
+            resultStore.engagementScores = engagementScores
+            resultStore.avgEngagement = avgEngagement
+            resultStore.studyPct = studyPct
+            resultStore.distractionCount = distractionCount
+            print("[SessionViewModel] ResultStore populated — \(summary.clips.count) clips, score=\(summary.sessionScore)")
 
             // 7. Fetch Claude feedback AFTER summary is fully built
             if !summary.clips.isEmpty {

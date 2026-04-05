@@ -24,6 +24,10 @@ struct ResultView: View {
         }
         .background(AppColors.bgPrimary)
         .toolbar(.hidden, for: .automatic)
+        .onDisappear {
+            // Safety net: submit if user navigates away via nav bar
+            resultStore.submitToBackend()
+        }
     }
 
     // MARK: - Loading
@@ -394,9 +398,15 @@ struct ResultView: View {
 
     // MARK: - Buttons
 
+    /// Submits session data to backend and navigates away
+    private func exitResultView(to route: Route) {
+        resultStore.submitToBackend()
+        onNavigate(route)
+    }
+
     private var actionButtons: some View {
         HStack(spacing: 10) {
-            Button { onNavigate(.start) } label: {
+            Button { exitResultView(to: .start) } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill").font(.system(size: 11))
                     Text("Start Another").font(.system(size: 13, weight: .semibold))
@@ -409,7 +419,7 @@ struct ResultView: View {
             }
             .buttonStyle(.plain)
 
-            Button { onNavigate(.building(id: buildingId)) } label: {
+            Button { exitResultView(to: .building(id: buildingId)) } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "building.2").font(.system(size: 11))
                     Text("View Territory").font(.system(size: 13, weight: .semibold))
