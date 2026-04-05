@@ -286,7 +286,7 @@ class TribeAnalysisService {
         guard let url = URL(string: "\(serverURL)/analyze?format=mp4") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 30  // shorter timeout to fail fast if server is down
+        request.timeoutInterval = 300  // TRIBE analysis can take minutes for video processing
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
@@ -316,6 +316,9 @@ class TribeAnalysisService {
         var brainData: Data? = nil
         if result.media_type == "mp4", let mediaData = Data(base64Encoded: result.brain_media) {
             brainData = mediaData
+            print("[tribe] Brain media decoded: \(mediaData.count) bytes")
+        } else {
+            print("[tribe] No brain media — media_type=\(result.media_type) brain_media_len=\(result.brain_media.count)")
         }
 
         let clip = ClipResult(
