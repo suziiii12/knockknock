@@ -60,8 +60,8 @@ struct ResultView: View {
                     encodingBreakdown(summary: summary)
                 }
 
-                // ROW 4 — Brain Maps
-                if summary.peakClip != nil || summary.lowestStudyClip != nil || summary.distractionClip != nil {
+                // ROW 4 — Brain Activity
+                if !summary.clips.isEmpty {
                     brainMapsSection(summary: summary)
                 }
 
@@ -201,6 +201,22 @@ struct ResultView: View {
         }
     }
 
+    private func regionLabel(_ name: String, detail: String, value: Double, color: Color) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color.opacity(0.2 + value * 0.8))
+                .frame(width: 4, height: 18)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(name)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(AppColors.textPrimary)
+                Text("\(detail) \u{2022} \(Int(value * 100))%")
+                    .font(.system(size: 9))
+                    .foregroundStyle(AppColors.textMuted)
+            }
+        }
+    }
+
     // MARK: - Encoding Breakdown
 
     private func encodingBreakdown(summary: SessionSummary) -> some View {
@@ -240,26 +256,58 @@ struct ResultView: View {
         .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
     }
 
-    // MARK: - Brain Activation Maps
+    // MARK: - Brain Activity
 
     private func brainMapsSection(summary: SessionSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Brain Activation Maps")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AppColors.textPrimary)
+            HStack {
+                Text("Brain Activity Analysis")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppColors.textPrimary)
+                Spacer()
+                Text("TRIBEv2")
+                    .font(.system(size: 9))
+                    .foregroundStyle(AppColors.textMuted)
+            }
 
-            HStack(alignment: .top, spacing: 16) {
-                if let clip = summary.peakClip {
-                    BrainMapCardView(title: "Peak Focus", clip: clip, color: .green)
+            // Aggregate brain region averages across all clips
+            let avgPfc = summary.clips.isEmpty ? 0 : summary.clips.map(\.pfc).reduce(0, +) / Double(summary.clips.count)
+            let avgDmn = summary.clips.isEmpty ? 0 : summary.clips.map(\.dmn).reduce(0, +) / Double(summary.clips.count)
+            let avgLang = summary.clips.isEmpty ? 0 : summary.clips.map(\.lang).reduce(0, +) / Double(summary.clips.count)
+
+            HStack(spacing: 20) {
+                // Region bars
+                HStack(spacing: 12) {
+                    RegionBarView(label: "PFC", value: avgPfc, color: .blue)
+                    RegionBarView(label: "DMN", value: avgDmn, color: .purple)
+                    RegionBarView(label: "Lang", value: avgLang, color: .teal)
                 }
-                if let clip = summary.lowestStudyClip {
-                    BrainMapCardView(title: "Lowest Study", clip: clip, color: .orange)
-                }
-                if let clip = summary.distractionClip {
-                    BrainMapCardView(title: "Distraction", clip: clip, color: .red)
+                .frame(height: 100)
+
+                // Region descriptions
+                VStack(alignment: .leading, spacing: 6) {
+                    regionLabel("Prefrontal Cortex", detail: "Planning & Focus", value: avgPfc, color: .blue)
+                    regionLabel("Default Mode", detail: "Mind-wandering", value: avgDmn, color: .purple)
+                    regionLabel("Language", detail: "Processing", value: avgLang, color: .teal)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+
+            // Brain map cards for peak/lowest/distraction if available
+            if summary.peakClip != nil || summary.lowestStudyClip != nil || summary.distractionClip != nil {
+                Divider()
+                HStack(alignment: .top, spacing: 16) {
+                    if let clip = summary.peakClip {
+                        BrainMapCardView(title: "Peak Focus", clip: clip, color: .green)
+                    }
+                    if let clip = summary.lowestStudyClip {
+                        BrainMapCardView(title: "Lowest Study", clip: clip, color: .orange)
+                    }
+                    if let clip = summary.distractionClip {
+                        BrainMapCardView(title: "Distraction", clip: clip, color: .red)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity)

@@ -211,11 +211,17 @@ class TribeAnalysisService {
         let focus = engagement * gateValue
         let encoding = classifyEncoding(engagement: engagement, gate: gateValue)
 
+        // Estimate brain region activation from app type
+        // Study apps → high PFC (planning), moderate lang; Distractions → high DMN (mind-wandering)
+        let pfcValue: Double = appScore >= 80 ? 0.85 : (appScore >= 30 ? 0.45 : 0.15)
+        let dmnValue: Double = appScore >= 80 ? 0.15 : (appScore >= 30 ? 0.40 : 0.80)
+        let langValue: Double = appScore >= 80 ? 0.65 : (appScore >= 30 ? 0.35 : 0.10)
+
         let clip = ClipResult(
             timestamp: Date(), engagement: engagement, gate: gateValue,
             focusScore: focus, encodingType: encoding,
             contentLabel: appName, contentReason: "App monitoring (TRIBE offline)",
-            brainMapData: nil, pfc: 0, dmn: 0, lang: 0
+            brainMapData: nil, pfc: pfcValue, dmn: dmnValue, lang: langValue
         )
 
         self.gate = gateValue
