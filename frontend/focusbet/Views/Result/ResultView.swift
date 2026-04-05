@@ -1,5 +1,6 @@
 import SwiftUI
-import Charts
+import AVFoundation
+import AVKit
 
 struct ResultView: View {
     let focusScore: Int
@@ -7,147 +8,183 @@ struct ResultView: View {
     let duration: Int
     let onNavigate: (Route) -> Void
 
+    private var resultStore: SessionResultStore { SessionResultStore.shared }
+
     private var building: Building {
         MockData.buildings.first { $0.id == buildingId } ?? MockData.buildings[0]
     }
 
-    private var isSuccess: Bool { focusScore >= 70 }
-
-    private var sessionScore: Int {
-        FocusScoreData.sessionScore(focusLevel: focusScore, durationMinutes: duration)
-    }
-
-    private var engagementData: [(minute: Int, score: Double)] {
-        let base = Double(focusScore)
-        return [
-            (0, base - 12), (5, base - 5), (10, base + 1), (15, base - 2), (20, base + 3),
-            (25, base), (30, base - 5), (35, base - 9), (40, base - 19), (45, base - 32),
-            (50, base - 27), (55, base - 15), (60, base - 9), (65, base - 2), (70, base + 1),
-            (75, base + 5), (80, base + 2), (85, base - 2), (90, base - 5), (95, base - 9),
-            (100, base - 7), (105, base - 4), (110, base - 8), (115, base - 12), (120, base - 10),
-        ].map { (m, s) in (m, max(10, min(100, s))) }
-         .filter { $0.0 <= duration }
-    }
-
-    private let brainRegions: [(name: String, label: String, activation: Double)] = [
-        ("Prefrontal", "Planning & Focus", 0.85),
-        ("Temporal", "Language", 0.62),
-        ("Parietal", "Problem Solving", 0.78),
-        ("Occipital", "Visual", 0.45),
-    ]
-
     var body: some View {
+        Group {
+            if let summary = resultStore.summary {
+                reportContent(summary: summary)
+            } else {
+                loadingView
+            }
+        }
+        .background(AppColors.bgPrimary)
+        .toolbar(.hidden, for: .automatic)
+    }
+
+    // MARK: - Loading
+
+    private var loadingView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            ProgressView().scaleEffect(1.5)
+            Text("Finishing analysis...")
+                .font(.headline).foregroundStyle(AppColors.textSecondary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Report Content
+
+    @ViewBuilder
+    private func reportContent(summary: SessionSummary) -> some View {
         ScrollView {
-            VStack(spacing: 10) {
-                // ROW 1 — Score Summary
-                scoreSummary
+            VStack(spacing: 12) {
+                // ROW 1 — Score + Stats
+                scoreSummary(summary: summary)
 
-                // ROW 2 — Engagement + Brain (side by side)
-                HStack(alignment: .top, spacing: 10) {
-                    engagementChart
-                    brainActivitySection
+                // ROW 2 — Stat boxes
+                statBoxes(summary: summary)
+
+                // ROW 3 — Focus Timeline + Encoding Breakdown
+                HStack(alignment: .top, spacing: 12) {
+                    focusTimeline(summary: summary)
+                    encodingBreakdown(summary: summary)
                 }
 
-                // ROW 3 — AI Insights (side by side)
-                HStack(alignment: .top, spacing: 10) {
-                    sessionSummaryCard
-                    improvementTipsCard
+                // ROW 4 — Brain Maps
+                if summary.peakClip != nil || summary.lowestStudyClip != nil || summary.distractionClip != nil {
+                    brainMapsSection(summary: summary)
                 }
 
-                // ROW 4 — Buttons
+                // ROW 5 — Claude Feedback
+                claudeFeedbackSection
+
+                // ROW 6 — Clip Detail List
+                if !summary.clips.isEmpty {
+                    clipDetailList(summary: summary)
+                }
+
+                // ROW 7 — Buttons
                 actionButtons
             }
             .padding(.top, 16)
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
         }
-        .background(AppColors.bgPrimary)
-        .toolbar(.hidden, for: .automatic)
     }
 
     // MARK: - Score Summary
 
-    private var scoreSummary: some View {
+    private func scoreSummary(summary: SessionSummary) -> some View {
         HStack(spacing: 36) {
-            FocusGaugeView(score: focusScore)
+            FocusGaugeView(score: Int(resultStore.finalScore > 0 ? resultStore.finalScore : summary.averageFocus))
                 .frame(width: 110, height: 110)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text(isSuccess ? "Session Complete!" : "Needs Improvement")
+                Text("Session Report")
                     .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(isSuccess ? AppColors.accent : AppColors.danger)
+                    .foregroundStyle(AppColors.accent)
 
-                Text("\(building.abbreviation) \u{2022} \(duration >= 60 ? "\(duration / 60)h" : "\(duration)min") session")
+                Text(String(format: "%.0f min \u{2022} %d clips \u{2022} %@",
+                            summary.durationMinutes,
+                            summary.clips.count,
+                            building.abbreviation))
                     .font(.system(size: 15))
                     .foregroundStyle(AppColors.textSecondary)
 
                 HStack(spacing: 24) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Session Score")
+                        Text("Final Score")
                             .font(.system(size: 12))
                             .foregroundStyle(AppColors.textMuted)
-                        Text("+\(sessionScore) pts")
+                        Text(String(format: "+%.0f pts", resultStore.finalScore > 0 ? resultStore.finalScore : summary.sessionScore))
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(AppColors.accent)
                     }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Rank Change")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AppColors.textMuted)
-                        Text("\(building.abbreviation): #3 \u{2192} #2 \u{2191}")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(AppColors.accent)
+                    if let peakTime = summary.peakFocusTime {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Peak Focus")
+                                .font(.system(size: 12))
+                                .foregroundStyle(AppColors.textMuted)
+                            Text(peakTime)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    if let distractTime = summary.firstDistractionTime {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("First Distraction")
+                                .font(.system(size: 12))
+                                .foregroundStyle(AppColors.textMuted)
+                            Text(distractTime)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.red)
+                        }
                     }
                 }
             }
             Spacer()
         }
-        .padding(32)
-        .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading)
+        .padding(24)
+        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
         .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
     }
 
-    // MARK: - Engagement Chart
+    // MARK: - Stat Boxes
 
-    private var engagementChart: some View {
+    private func statBoxes(summary: SessionSummary) -> some View {
+        HStack(spacing: 10) {
+            ResultStatBox(title: "Session Score",
+                          value: String(format: "%.1f", resultStore.finalScore > 0 ? resultStore.finalScore : summary.sessionScore),
+                          color: .green)
+            ResultStatBox(title: "Engagement",
+                          value: String(Int(summary.averageEngagement)),
+                          color: .blue)
+            ResultStatBox(title: "Study Time",
+                          value: String(format: "%.0f%%", summary.studyingFraction * 100),
+                          color: .teal)
+            ResultStatBox(title: "Distractions",
+                          value: String(summary.distractionCount),
+                          color: .red)
+            ResultStatBox(title: "Focus Streak",
+                          value: "\(summary.longestFocusStreak) clips",
+                          color: .orange)
+        }
+    }
+
+    // MARK: - Focus Timeline
+
+    private func focusTimeline(summary: SessionSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Focus Engagement Over Time")
+            Text("Focus Timeline")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
 
-            Chart(engagementData, id: \.minute) { point in
-                LineMark(x: .value("Min", point.minute), y: .value("Score", point.score))
-                    .foregroundStyle(AppColors.accentLight)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
-                AreaMark(x: .value("Min", point.minute), y: .value("Score", point.score))
-                    .foregroundStyle(
-                        .linearGradient(colors: [AppColors.accentLight.opacity(0.2), .clear],
-                                        startPoint: .top, endPoint: .bottom)
-                    )
+            if summary.clips.isEmpty {
+                Text("No clips recorded")
+                    .font(.caption).foregroundStyle(AppColors.textMuted)
+                    .frame(maxWidth: .infinity, minHeight: 160, alignment: .center)
+            } else {
+                FocusScoreGraphView(clips: summary.clips)
+                    .frame(maxWidth: .infinity, minHeight: 160)
             }
-            .chartYScale(domain: 0...100)
-            .chartYAxis {
-                AxisMarks(values: [0, 40, 70, 100]) { v in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3)).foregroundStyle(AppColors.border)
-                    AxisValueLabel { if let val = v.as(Int.self) { Text("\(val)").font(.system(size: 8)).foregroundStyle(AppColors.textMuted) } }
-                }
-            }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: 30)) { _ in
-                    AxisValueLabel().foregroundStyle(AppColors.textMuted)
-                }
-            }
-            .frame(maxHeight: .infinity)
 
             HStack(spacing: 14) {
-                zoneLegend(AppColors.accentLight, "Focused")
-                zoneLegend(AppColors.warning, "Drifting")
-                zoneLegend(AppColors.danger, "Distracted")
+                zoneLegend(.green, "Deep")
+                zoneLegend(.blue, "Shallow")
+                zoneLegend(.orange, "Overload")
+                zoneLegend(.red, "Distracted")
             }
         }
-        .padding(10)
+        .padding(12)
         .frame(maxWidth: .infinity)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
@@ -156,142 +193,152 @@ struct ResultView: View {
 
     private func zoneLegend(_ color: Color, _ label: String) -> some View {
         HStack(spacing: 3) {
-            RoundedRectangle(cornerRadius: 2).fill(color.opacity(0.4)).frame(width: 10, height: 6)
+            Circle().fill(color).frame(width: 6, height: 6)
             Text(label).font(.system(size: 9)).foregroundStyle(AppColors.textMuted)
         }
     }
 
-    // MARK: - Brain Activity
+    // MARK: - Encoding Breakdown
 
-    private var brainActivitySection: some View {
+    private func encodingBreakdown(summary: SessionSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Brain Activity Analysis")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppColors.textPrimary)
-                Spacer()
-                Text("TRIBEv2")
-                    .font(.system(size: 9))
-                    .foregroundStyle(AppColors.textMuted)
-            }
+            Text("Encoding Breakdown")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
 
-            HStack(spacing: 16) {
-                brainMapView
-                    .frame(width: 120, height: 110)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(brainRegions, id: \.name) { region in
-                        HStack(spacing: 6) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(AppColors.accentLight.opacity(0.2 + region.activation * 0.8))
-                                .frame(width: 4, height: 18)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(region.label)
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(AppColors.textPrimary)
-                                Text("\(Int(region.activation * 100))%")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(AppColors.textMuted)
-                            }
+            VStack(spacing: 8) {
+                ForEach([EncodingType.deep, .shallow, .overload, .distracted], id: \.rawValue) { type in
+                    let count = summary.encodingBreakdown[type] ?? 0
+                    HStack(spacing: 8) {
+                        Text(type.emoji).font(.title3)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(type.rawValue)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(AppColors.textPrimary)
+                            Text("\(count) clip\(count == 1 ? "" : "s")")
+                                .font(.system(size: 10))
+                                .foregroundStyle(AppColors.textMuted)
                         }
+                        Spacer()
+                        Text("\(count)")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(type.color)
                     }
+                    .padding(8)
+                    .background(type.color.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-            }
-
-            // Cognitive demand bar
-            VStack(spacing: 4) {
-                HStack {
-                    Text("Cognitive Demand")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(AppColors.textSecondary)
-                    Spacer()
-                    Text("78/100")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(AppColors.accent)
-                }
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3).fill(AppColors.bgTertiary)
-                        RoundedRectangle(cornerRadius: 3).fill(AppColors.accentLight).frame(width: geo.size.width * 0.78)
-                    }
-                }
-                .frame(height: 6)
             }
         }
-        .padding(10)
+        .padding(12)
+        .frame(width: 220)
+        .background(AppColors.bgSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
+        .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
+    }
+
+    // MARK: - Brain Activation Maps
+
+    private func brainMapsSection(summary: SessionSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Brain Activation Maps")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
+
+            HStack(alignment: .top, spacing: 16) {
+                if let clip = summary.peakClip {
+                    BrainMapCardView(title: "Peak Focus", clip: clip, color: .green)
+                }
+                if let clip = summary.lowestStudyClip {
+                    BrainMapCardView(title: "Lowest Study", clip: clip, color: .orange)
+                }
+                if let clip = summary.distractionClip {
+                    BrainMapCardView(title: "Distraction", clip: clip, color: .red)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(12)
         .frame(maxWidth: .infinity)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
         .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
     }
 
-    private var brainMapView: some View {
-        Canvas { context, size in
-            let cx = size.width / 2
-            let cy = size.height / 2
-            let w = size.width * 0.85
-            let h = size.height * 0.85
+    // MARK: - Claude Feedback
 
-            let brainPath = Path(ellipseIn: CGRect(x: cx - w / 2, y: cy - h / 2, width: w, height: h))
-            context.stroke(brainPath, with: .color(AppColors.border), lineWidth: 1.2)
+    private var claudeFeedbackSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Claude Feedback")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppColors.textPrimary)
+                Spacer()
+                if resultStore.isFetchingFeedback {
+                    ProgressView().scaleEffect(0.6)
+                    Text("Generating...").font(.system(size: 10)).foregroundStyle(AppColors.textMuted)
+                }
+            }
 
-            var midLine = Path()
-            midLine.move(to: CGPoint(x: cx, y: cy - h / 2 + 8))
-            midLine.addLine(to: CGPoint(x: cx, y: cy + h / 2 - 8))
-            context.stroke(midLine, with: .color(AppColors.border.opacity(0.4)), lineWidth: 0.8)
-
-            let regions: [(CGRect, Double)] = [
-                (CGRect(x: cx - 25, y: cy - h / 2 + 12, width: 50, height: 30), 0.85),
-                (CGRect(x: cx - w / 2 + 8, y: cy - 8, width: 25, height: 36), 0.62),
-                (CGRect(x: cx + w / 2 - 33, y: cy - 8, width: 25, height: 36), 0.62),
-                (CGRect(x: cx - 22, y: cy - 10, width: 44, height: 30), 0.78),
-                (CGRect(x: cx - 18, y: cy + h / 2 - 38, width: 36, height: 25), 0.45),
-            ]
-            for (rect, activation) in regions {
-                context.fill(Path(ellipseIn: rect), with: .color(AppColors.accentLight.opacity(0.15 + activation * 0.55)))
+            if resultStore.claudeFeedback.isEmpty && !resultStore.isFetchingFeedback {
+                Text("No feedback available")
+                    .font(.system(size: 11)).foregroundStyle(AppColors.textMuted)
+            } else if !resultStore.claudeFeedback.isEmpty {
+                Text(resultStore.claudeFeedback)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineSpacing(4)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.accentLight.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
-    }
-
-    // MARK: - AI Feedback
-
-    private var sessionSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("\u{1F4DD} Session Summary")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AppColors.textPrimary)
-            bulletPoint("Studied \(duration >= 60 ? "\(duration / 60)h" : "\(duration)min") at \(building.abbreviation) with avg focus of \(focusScore).")
-            bulletPoint("Focus dipped around 45min — common with task-switching fatigue.")
-            bulletPoint("Strongest focus between 60-80 min during deep work.")
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .frame(maxWidth: .infinity)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
         .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
     }
 
-    private var improvementTipsCard: some View {
+    // MARK: - Clip Detail List
+
+    private func clipDetailList(summary: SessionSummary) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("\u{1F4A1} Improvement Tips")
-                .font(.system(size: 12, weight: .semibold))
+            Text("Clip Details")
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
-            bulletPoint("Try Pomodoro — 25 min focus + 5 min break.")
-            bulletPoint("Take a 2-min mental reset when switching tasks.")
-            bulletPoint("Minimize phone notifications during high-focus periods.")
+
+            ForEach(Array(summary.clips.enumerated()), id: \.offset) { i, clip in
+                HStack(spacing: 8) {
+                    Text("\(i + 1)")
+                        .font(.system(size: 10)).foregroundStyle(AppColors.textMuted)
+                        .frame(width: 18)
+                    Circle()
+                        .fill(clip.encodingType.color)
+                        .frame(width: 8, height: 8)
+                    Text("\(Int(clip.focusScore))")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(AppColors.textSecondary)
+                        .frame(width: 24)
+                    Text("\(clip.encodingType.emoji) \(clip.contentLabel)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppColors.textSecondary)
+                    Spacer()
+                    if !clip.contentReason.isEmpty {
+                        Text(clip.contentReason)
+                            .font(.system(size: 9))
+                            .foregroundStyle(AppColors.textMuted)
+                            .lineLimit(1)
+                    }
+                }
+            }
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .frame(maxWidth: .infinity)
         .background(AppColors.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: AppDimensions.cornerRadiusCard))
         .shadow(color: AppColors.cardShadow, radius: 8, y: 2)
-    }
-
-    private func bulletPoint(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 5) {
-            Circle().fill(AppColors.accent).frame(width: 3, height: 3).padding(.top, 5)
-            Text(text).font(.system(size: 10)).foregroundStyle(AppColors.textSecondary).lineSpacing(1)
-        }
     }
 
     // MARK: - Buttons
@@ -325,5 +372,231 @@ struct ResultView: View {
 
             Spacer()
         }
+    }
+}
+
+// MARK: - Focus Score Graph (real clip data)
+
+struct FocusScoreGraphView: View {
+    let clips: [ClipResult]
+
+    private let padTop: CGFloat    = 16
+    private let padBottom: CGFloat = 28
+    private let padLeft: CGFloat   = 36
+    private let padRight: CGFloat  = 12
+
+    private let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm"
+        return f
+    }()
+
+    private func xPos(_ i: Int, graphW: CGFloat) -> CGFloat {
+        clips.count <= 1
+            ? padLeft + graphW / 2
+            : padLeft + CGFloat(i) / CGFloat(clips.count - 1) * graphW
+    }
+
+    private func yPos(_ score: Double, graphH: CGFloat) -> CGFloat {
+        padTop + graphH * (1 - score / 100.0)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let graphW = w - padLeft - padRight
+            let graphH = h - padTop - padBottom
+
+            ZStack(alignment: .topLeading) {
+                // Y gridlines
+                ForEach([0, 25, 50, 75, 100], id: \.self) { val in
+                    let y = yPos(Double(val), graphH: graphH)
+                    Path { p in
+                        p.move(to: CGPoint(x: padLeft, y: y))
+                        p.addLine(to: CGPoint(x: w - padRight, y: y))
+                    }
+                    .stroke(AppColors.border.opacity(0.4), lineWidth: 0.5)
+                    Text("\(val)")
+                        .font(.system(size: 9))
+                        .foregroundStyle(AppColors.textMuted)
+                        .frame(width: 26, alignment: .trailing)
+                        .position(x: padLeft - 6, y: y)
+                }
+
+                // Distraction shading
+                ForEach(Array(clips.enumerated()), id: \.offset) { i, clip in
+                    if clip.gate == 0 && clips.count > 1 {
+                        Rectangle()
+                            .fill(Color.red.opacity(0.06))
+                            .frame(width: graphW / CGFloat(clips.count - 1), height: graphH)
+                            .position(x: xPos(i, graphW: graphW), y: padTop + graphH / 2)
+                    }
+                }
+
+                // Connecting line
+                if clips.count > 1 {
+                    Path { p in
+                        for (i, clip) in clips.enumerated() {
+                            let pt = CGPoint(x: xPos(i, graphW: graphW), y: yPos(clip.focusScore, graphH: graphH))
+                            i == 0 ? p.move(to: pt) : p.addLine(to: pt)
+                        }
+                    }
+                    .stroke(AppColors.accentLight.opacity(0.5), lineWidth: 1.5)
+                }
+
+                // Dots + labels
+                ForEach(Array(clips.enumerated()), id: \.offset) { i, clip in
+                    let x = xPos(i, graphW: graphW)
+                    let y = yPos(clip.focusScore, graphH: graphH)
+                    Circle()
+                        .fill(clip.encodingType.color)
+                        .frame(width: 8, height: 8)
+                        .position(x: x, y: y)
+                    Text("\(Int(clip.focusScore))")
+                        .font(.system(size: 8))
+                        .foregroundStyle(AppColors.textMuted)
+                        .position(x: x, y: y - 10)
+                    Text(timeFormatter.string(from: clip.timestamp))
+                        .font(.system(size: 8))
+                        .foregroundStyle(AppColors.textMuted)
+                        .frame(width: 32, alignment: .center)
+                        .position(x: x, y: h - 8)
+                }
+
+                // Axes
+                Path { p in
+                    p.move(to: CGPoint(x: padLeft, y: padTop + graphH))
+                    p.addLine(to: CGPoint(x: w - padRight, y: padTop + graphH))
+                    p.move(to: CGPoint(x: padLeft, y: padTop))
+                    p.addLine(to: CGPoint(x: padLeft, y: padTop + graphH))
+                }
+                .stroke(AppColors.border.opacity(0.5), lineWidth: 0.5)
+            }
+        }
+    }
+}
+
+// MARK: - Stat Box
+
+struct ResultStatBox: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(color)
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundStyle(AppColors.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(10)
+        .background(color.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// MARK: - Brain Map Card
+
+struct BrainMapCardView: View {
+    let title: String
+    let clip: ClipResult
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(color)
+
+            if let data = clip.brainMapData,
+               let url = saveBrainVideo(data: data, name: title) {
+                BrainVideoPlayerView(url: url)
+                    .frame(width: 160, height: 160)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                // Fallback: show region bars
+                HStack(spacing: 6) {
+                    RegionBarView(label: "PFC", value: clip.pfc, color: .blue)
+                    RegionBarView(label: "DMN", value: clip.dmn, color: .purple)
+                    RegionBarView(label: "Lang", value: clip.lang, color: .teal)
+                }
+                .frame(width: 160, height: 100)
+                .padding(8)
+                .background(AppColors.bgTertiary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            Text(String(format: "focus: %d \u{2022} %@", Int(clip.focusScore), clip.encodingType.rawValue))
+                .font(.system(size: 9)).foregroundStyle(AppColors.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func saveBrainVideo(data: Data, name: String) -> URL? {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("report_brain_\(name.replacingOccurrences(of: " ", with: "_")).mp4")
+        try? data.write(to: url)
+        return url
+    }
+}
+
+// MARK: - Region Bar
+
+struct RegionBarView: View {
+    let label: String
+    let value: Double
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(label).font(.system(size: 9)).foregroundStyle(AppColors.textMuted)
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 2).fill(color.opacity(0.12))
+                    RoundedRectangle(cornerRadius: 2).fill(color)
+                        .frame(height: geo.size.height * max(0, min(1, value)))
+                }
+            }
+            .frame(width: 16)
+            Text(String(format: "%.1f", value))
+                .font(.system(size: 8, design: .monospaced))
+                .foregroundStyle(AppColors.textMuted)
+        }
+    }
+}
+
+// MARK: - Brain Video Player
+
+struct BrainVideoPlayerView: NSViewRepresentable {
+    let url: URL
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .none
+        view.videoGravity = .resizeAspect
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.white.cgColor
+        return view
+    }
+
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        nsView.layer?.backgroundColor = NSColor.white.cgColor
+        let player = AVPlayer(url: url)
+        nsView.player = player
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { _ in
+            player.seek(to: .zero)
+            player.play()
+        }
+        player.play()
     }
 }

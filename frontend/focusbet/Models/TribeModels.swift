@@ -92,6 +92,26 @@ struct SessionSummary {
         }
         return best
     }
+
+    // Time formatting helpers
+    var sessionStartFormatted: String { formatTime(startTime) }
+    var sessionEndFormatted: String   { formatTime(endTime) }
+
+    var peakFocusTime: String? {
+        guard let clip = peakClip else { return nil }
+        return formatTime(clip.timestamp)
+    }
+
+    var firstDistractionTime: String? {
+        guard let clip = clips.first(where: { $0.gate == 0.0 }) else { return nil }
+        return formatTime(clip.timestamp)
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f.string(from: date)
+    }
 }
 
 // MARK: - Session Store

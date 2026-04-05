@@ -71,7 +71,6 @@ class SessionViewModel {
             focusTracking.startTracking()
 
             // Start TRIBE v2 screen recording + analysis loop (after permissions granted)
-            // Pass dependencies so TRIBE can post focus levels to the real backend
             tribeAnalysis.startAnalysis(
                 sessionIdProvider: { [weak self] in self?.sessionId },
                 screenCapture: screenCapture,
@@ -121,6 +120,12 @@ class SessionViewModel {
             distractionCount = summary.distractionCount
         }
 
+        // Populate SessionResultStore for ResultView
+        let resultStore = SessionResultStore.shared
+        resultStore.summary = summary
+        resultStore.claudeFeedback = ""
+        resultStore.isFetchingFeedback = true
+
         let startTask = sessionStartTask
         sessionStartTask = nil
 
@@ -142,31 +147,95 @@ class SessionViewModel {
                     studyPct: studyPct,
                     distractionCount: distractionCount
                 )
+                resultStore.finalScore = finalScore
                 print("[SessionViewModel] Session \(sid) ended — final score: \(finalScore)")
                 NotificationCenter.default.post(name: .sessionDidEnd, object: nil)
             } catch {
                 print("[SessionViewModel] endSession error: \(error.localizedDescription)")
             }
+
+            // Fetch Claude feedback from TRIBE server
+            await fetchClaudeFeedback(summary: summary)
         }
+    }
+
+    // MARK: - Claude Feedback
+
+    private func fetchClaudeFeedback(summary: SessionSummary) async {
+        let resultStore = SessionResultStore.shared
+        let serverURL = tribeAnalysis.serverURL
+
+        guard let url = URL(string: "\(serverURL)/report") else {
+            resultStore.isFetchingFeedback = false
+            return
+        }
+
+        struct ClipPayload: Encodable {
+            let timestamp: String
+            let focus_score: Double
+            let engagement: Double
+            let gate: Double
+            let encoding_type: String
+            let content_label: String
+            let content_reason: String
+            let pfc: Double
+            let dmn: Double
+            let lang: Double
+        }
+
+        struct ReportPayload: Encodable {
+            let duration_minutes: Double
+            let clips: [ClipPayload]
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+
+        let clipsData = summary.clips.map { clip in
+            ClipPayload(
+                timestamp: formatter.string(from: clip.timestamp),
+                focus_score: clip.focusScore,
+                engagement: clip.engagement,
+                gate: clip.gate,
+                encoding_type: clip.encodingType.rawValue,
+                content_label: clip.contentLabel,
+                content_reason: clip.contentReason,
+                pfc: clip.pfc, dmn: clip.dmn, lang: clip.lang
+            )
+        }
+
+        let payload = ReportPayload(
+            duration_minutes: summary.durationMinutes,
+            clips: clipsData
+        )
+
+        do {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(payload)
+            request.timeoutInterval = 60
+
+            let (data, _) = try await URLSession.shared.data(for: request)
+
+            struct ReportResponse: Decodable {
+                let feedback: String?
+                let error: String?
+            }
+            let result = try JSONDecoder().decode(ReportResponse.self, from: data)
+            resultStore.claudeFeedback = result.feedback ?? result.error ?? "No feedback returned"
+            print("[SessionViewModel] Claude feedback received")
+        } catch {
+            resultStore.claudeFeedback = "Feedback unavailable: \(error.localizedDescription)"
+            print("[SessionViewModel] Claude feedback error: \(error)")
+        }
+        resultStore.isFetchingFeedback = false
     }
 
     // MARK: - Score updates (called by SessionView timer)
 
     func updateScores(from data: FocusScoreData) {
         scores = data
-    }
-
-    /// Set engagement metrics from EngagementScoreAI pipeline before ending session
-    func setEngagementData(
-        scores: [Double]? = nil,
-        avgEngagement: Double? = nil,
-        studyPct: Double? = nil,
-        distractionCount: Int? = nil
-    ) {
-        self.engagementScores = scores
-        self.avgEngagement = avgEngagement
-        self.studyPct = studyPct
-        self.distractionCount = distractionCount
     }
 
     // MARK: - Check-in
