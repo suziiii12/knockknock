@@ -133,10 +133,10 @@ curl http://localhost:8000/sessions/1/export
 focus_pipeline/
 ├── api/server.py               FastAPI app
 ├── db/store.py                 SQLite schema + queries
-├── exports/                    JSON files written on session stop
+├── exports/                    CSV files written on session stop
 ├── pipeline/
 │   ├── inference_engine.py     Orchestrator + start/stop API
-│   ├── session_export.py       JSON writer
+│   ├── session_export.py       CSV writer
 │   ├── webcam_capture.py       Camera thread
 │   ├── feature_extractor.py    11-dim features
 │   ├── study_context.py        InferredState fusion
