@@ -107,55 +107,74 @@ class SessionViewModel {
         screenCaptureService = nil
         focusTrackingService = nil
 
-        // Stop TRIBE v2 analysis and build summary with LSTM engagement scores
+        // Stop the timer and recorder — no new captures will start
         tribeAnalysis.stopAnalysis()
-        let summary = tribeAnalysis.buildSummary(lstm: lstm)
-        sessionSummary = summary
 
-        // Populate engagement data from TRIBE + LSTM analysis
-        if !summary.clips.isEmpty {
-            engagementScores = summary.clips.map(\.engagement)
-            avgEngagement = summary.averageEngagement
-            studyPct = summary.studyingFraction * 100
-            distractionCount = summary.distractionCount
-        }
-
-        // Populate SessionResultStore for ResultView
+        // Prepare result store with loading state (ResultView shows spinner)
         let resultStore = SessionResultStore.shared
-        resultStore.summary = summary
-        resultStore.claudeFeedback = ""
+        resultStore.clear()
         resultStore.isFetchingFeedback = true
 
         let startTask = sessionStartTask
         sessionStartTask = nil
 
-        // Stop LSTM session
-        Task { _ = await lstm.stopSession() }
-
+        // All remaining work happens async — ResultView shows loading until ready
         Task {
-            // Wait for the start call to finish first — critical for short sessions
-            await startTask?.value
-            guard let sid = sessionId else {
-                print("[SessionViewModel] endSession: no sessionId — start may have failed")
-                return
+            // 1. Wait for any in-progress TRIBE clip analysis to finish
+            print("[SessionViewModel] Waiting for in-progress analysis to complete...")
+            var waited = 0
+            while tribeAnalysis.isAnalyzing && waited < 120 {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+                waited += 1
             }
-            await postFocusLevel(sessionId: sid)
-            do {
-                let finalScore = try await APIService.shared.endSession(
-                    engagementScores: engagementScores,
-                    avgEngagement: avgEngagement,
-                    studyPct: studyPct,
-                    distractionCount: distractionCount
-                )
-                resultStore.finalScore = finalScore
-                print("[SessionViewModel] Session \(sid) ended — final score: \(finalScore)")
-                NotificationCenter.default.post(name: .sessionDidEnd, object: nil)
-            } catch {
-                print("[SessionViewModel] endSession error: \(error.localizedDescription)")
+            print("[SessionViewModel] Analysis done — \(tribeAnalysis.clips.count) clips collected (waited \(waited * 500)ms)")
+
+            // 2. Stop LSTM and fetch engagement export
+            _ = await lstm.stopSession()
+
+            // 3. Build session summary with real engagement scores
+            let summary = tribeAnalysis.buildSummary(lstm: lstm)
+            sessionSummary = summary
+
+            // 4. Populate engagement data
+            if !summary.clips.isEmpty {
+                engagementScores = summary.clips.map(\.engagement)
+                avgEngagement = summary.averageEngagement
+                studyPct = summary.studyingFraction * 100
+                distractionCount = summary.distractionCount
             }
 
-            // Fetch Claude feedback from TRIBE server
-            await fetchClaudeFeedback(summary: summary)
+            // 5. End session on backend — wait for start to finish first
+            await startTask?.value
+            var finalScore: Double = summary.sessionScore
+            if let sid = sessionId {
+                await postFocusLevel(sessionId: sid)
+                do {
+                    finalScore = try await APIService.shared.endSession(
+                        engagementScores: engagementScores,
+                        avgEngagement: avgEngagement,
+                        studyPct: studyPct,
+                        distractionCount: distractionCount
+                    )
+                    print("[SessionViewModel] Session \(sid) ended — final score: \(finalScore)")
+                    NotificationCenter.default.post(name: .sessionDidEnd, object: nil)
+                } catch {
+                    print("[SessionViewModel] endSession error: \(error.localizedDescription)")
+                }
+            }
+
+            // 6. Now populate result store — this makes ResultView transition from loading to content
+            resultStore.finalScore = finalScore
+            resultStore.summary = summary
+            print("[SessionViewModel] ResultStore populated — \(summary.clips.count) clips, score=\(finalScore)")
+
+            // 7. Fetch Claude feedback AFTER summary is fully built
+            if !summary.clips.isEmpty {
+                await fetchClaudeFeedback(summary: summary)
+            } else {
+                resultStore.claudeFeedback = "No clips were recorded during this session."
+                resultStore.isFetchingFeedback = false
+            }
         }
     }
 

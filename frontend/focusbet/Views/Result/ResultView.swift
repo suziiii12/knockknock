@@ -31,9 +31,12 @@ struct ResultView: View {
     private var loadingView: some View {
         VStack(spacing: 20) {
             Spacer()
-            ProgressView().scaleEffect(1.5)
+            ProgressView()
+                .scaleEffect(1.5)
             Text("Finishing analysis...")
                 .font(.headline).foregroundStyle(AppColors.textSecondary)
+            Text("Waiting for clip analysis and server response...")
+                .font(.caption).foregroundStyle(AppColors.textMuted)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
